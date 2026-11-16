@@ -1,0 +1,159 @@
+{{- $component := "identity" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "scm.fullname" . }}-{{ $component }}
+  labels:
+    {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "scm.componentSelectorLabels" (dict "root" . "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- include "scm.podCommon" . | nindent 6 }}
+      {{- include "scm.scheduling" .Values.identity | nindent 6 }}
+      initContainers:
+        # Fills the client secrets into the realm import. complyadm renders the
+        # same file from templates/identity/puppet-realm.json.epp.
+        - name: render-realm
+          image: {{ printf "%s:%s" .Values.initImage.repository .Values.initImage.tag | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              awk '
+              BEGIN {
+                n = split("KC_ACCOUNT_SECRET KC_ACCOUNT_CONSOLE_SECRET KC_ADMIN_CLI_SECRET KC_BROKER_SECRET KC_REALM_MANAGEMENT_SECRET KC_SECURITY_ADMIN_CONSOLE_SECRET CLIENT_SECRET", keys, " ")
+              }
+              {
+                for (i = 1; i <= n; i++) {
+                  token = "@@" keys[i] "@@"
+                  while ((p = index($0, token)) > 0) {
+                    $0 = substr($0, 1, p - 1) ENVIRON[keys[i]] substr($0, p + length(token))
+                  }
+                }
+                print
+              }' /template/Puppet-realm.json > /realm/Puppet-realm.json
+              if grep -q '@@' /realm/Puppet-realm.json; then
+                echo "unfilled placeholder left in the realm file" >&2
+                exit 1
+              fi
+          env:
+            {{- include "scm.secretEnv" (dict "root" . "name" "KC_ACCOUNT_SECRET" "key" "kc-account-secret") | nindent 12 }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "KC_ACCOUNT_CONSOLE_SECRET" "key" "kc-account-console-secret") | nindent 12 }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "KC_ADMIN_CLI_SECRET" "key" "kc-admin-cli-secret") | nindent 12 }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "KC_BROKER_SECRET" "key" "kc-broker-secret") | nindent 12 }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "KC_REALM_MANAGEMENT_SECRET" "key" "kc-realm-management-secret") | nindent 12 }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "KC_SECURITY_ADMIN_CONSOLE_SECRET" "key" "kc-security-admin-console-secret") | nindent 12 }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "CLIENT_SECRET" "key" "client-secret") | nindent 12 }}
+          {{- include "scm.initContainerDefaults" . | nindent 10 }}
+          volumeMounts:
+            - name: realm-template
+              mountPath: /template
+              readOnly: true
+            - name: realm
+              mountPath: /realm
+      containers:
+        - name: identity
+          image: {{ include "scm.image" (dict "root" . "image" .Values.identity.image) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # From the complyadm 3.9.0 comply_identity service in functions/config.pp.
+          # KC_TRUSTSTORE_PATHS is left out: complyadm sets it so Keycloak trusts
+          # the frontdoor certificate, and here the ingress serves the certificate.
+          env:
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL_HOST
+              value: {{ include "scm.fullname" . }}-postgres
+            - name: KC_DB_USERNAME
+              value: keycloak
+            {{- include "scm.secretEnv" (dict "root" . "name" "KC_DB_PASSWORD" "key" "keycloak-db-password") | nindent 12 }}
+            - name: COMPLY_DB_CONNECTION
+              value: {{ printf "jdbc:postgresql://%s-postgres/comply?ssl=false" (include "scm.fullname" .) | quote }}
+            - name: COMPLY_DB_USER
+              value: comply
+            {{- include "scm.secretEnv" (dict "root" . "name" "COMPLY_DB_PASSWORD" "key" "comply-db-password") | nindent 12 }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "DB_ENCRYPTION_KEY" "key" "db-encryption-key") | nindent 12 }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "KC_BOOTSTRAP_ADMIN_USERNAME" "key" "keycloak-admin-username") | nindent 12 }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "KC_BOOTSTRAP_ADMIN_PASSWORD" "key" "keycloak-admin-password") | nindent 12 }}
+            - name: KC_HOSTNAME
+              value: {{ .Values.hostname | quote }}
+            - name: SIGN_OUT_URL
+              value: {{ printf "https://%s/sign_out" .Values.hostname | quote }}
+            - name: KC_LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: PROXY_ADDRESS_FORWARDING
+              value: "true"
+            - name: JDBC_PARAMS
+              value: ssl=false
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_HTTP_RELATIVE_PATH
+              value: /auth
+            - name: KC_CACHE
+              value: local
+            - name: JAVA_OPTS
+              value: {{ .Values.identity.javaOpts | quote }}
+            - name: FEATURES
+              value: {{ .Values.features | quote }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 9000
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /auth/health/live
+              port: management
+            periodSeconds: 5
+            # The first start builds the schema and imports the realm.
+            failureThreshold: 90
+          livenessProbe:
+            httpGet:
+              path: /auth/health/live
+              port: management
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /auth/health/ready
+              port: management
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          {{- with .Values.identity.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: realm
+              mountPath: /opt/keycloak/data/import/Puppet-realm.json
+              subPath: Puppet-realm.json
+              readOnly: true
+            - name: pe-certs
+              mountPath: /certs
+              readOnly: true
+      volumes:
+        - name: realm-template
+          configMap:
+            name: {{ include "scm.fullname" . }}-realm-template
+        - name: realm
+          emptyDir:
+            medium: Memory
+        {{- include "scm.peCertsVolume" . | nindent 8 }}

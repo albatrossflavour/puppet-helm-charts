@@ -1,0 +1,43 @@
+{{- if .Values.ingress.enabled -}}
+{{- $root := . -}}
+{{- $ingresses := list
+  (dict "suffix" "ui" "host" (required "hostname is required" .Values.hostname) "service" "ui" "port" "http" "secret" .Values.ingress.tls.secretName)
+  (dict "suffix" "backend" "host" (required "backendHostname is required" .Values.backendHostname) "service" "pipelinesinfra" "port" "backend" "secret" .Values.ingress.tls.backendSecretName)
+-}}
+{{- range $ingresses }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "cd4pe.fullname" $root }}-{{ .suffix }}
+  labels:
+    {{- include "cd4pe.labels" $root | nindent 4 }}
+  {{- with $root.Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $root.Values.ingress.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- if $root.Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .host | quote }}
+      {{- with .secret }}
+      secretName: {{ . | quote }}
+      {{- end }}
+  {{- end }}
+  rules:
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "cd4pe.fullname" $root }}-{{ .service }}
+                port:
+                  name: {{ .port }}
+{{- end }}
+{{- end }}

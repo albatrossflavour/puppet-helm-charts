@@ -1,0 +1,65 @@
+{{- $component := "ui" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cd4pe.fullname" . }}-{{ $component }}
+  labels:
+    {{- include "cd4pe.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "cd4pe.componentSelectorLabels" (dict "root" . "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cd4pe.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- include "cd4pe.podCommon" . | nindent 6 }}
+      {{- include "cd4pe.scheduling" .Values.ui | nindent 6 }}
+      containers:
+        - name: ui
+          image: {{ include "cd4pe.image" (dict "root" . "image" .Values.ui.image) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: CD4PE_SERVICE
+              value: {{ printf "http://%s-pipelinesinfra:8080" (include "cd4pe.fullname" .) | quote }}
+            - name: QUERY_SERVICE
+              value: {{ printf "http://%s-query:8080" (include "cd4pe.fullname" .) | quote }}
+            - name: LOGGING
+              value: info
+            - name: TEAMS_UI_VERSION
+              value: {{ .Chart.AppVersion | quote }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 15
+            failureThreshold: 6
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 15
+            failureThreshold: 6
+          {{- with .Values.ui.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/templates/base.conf.template
+              subPath: base.conf.template
+              readOnly: true
+            - name: logs
+              mountPath: /app/logs
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "cd4pe.fullname" . }}-config
+        - name: logs
+          emptyDir: {}

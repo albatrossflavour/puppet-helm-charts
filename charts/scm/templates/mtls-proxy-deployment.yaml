@@ -1,0 +1,64 @@
+{{- if .Values.mtlsProxy.enabled -}}
+{{- $component := "mtls-proxy" -}}
+{{- $_ := required "mtlsProxy.enabled needs pe.existingSecret: nginx cannot start on the empty placeholder certificates" .Values.pe.existingSecret -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "scm.fullname" . }}-{{ $component }}
+  labels:
+    {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "scm.componentSelectorLabels" (dict "root" . "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- include "scm.podCommon" . | nindent 6 }}
+      {{- include "scm.scheduling" .Values.mtlsProxy | nindent 6 }}
+      containers:
+        - name: mtls-proxy
+          image: {{ include "scm.image" (dict "root" . "image" .Values.frontdoor.image) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: mtls
+              containerPort: 8080
+              protocol: TCP
+            - name: health
+              containerPort: 8081
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: health
+            periodSeconds: 15
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: health
+            periodSeconds: 15
+            failureThreshold: 6
+          {{- with .Values.mtlsProxy.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: mtls-proxy-nginx.conf
+              readOnly: true
+            - name: pe-certs
+              mountPath: /certs
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "scm.fullname" . }}-config
+        {{- include "scm.peCertsVolume" . | nindent 8 }}
+{{- end }}

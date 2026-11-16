@@ -1,0 +1,27 @@
+{{- $root := . -}}
+{{- $services := list
+  (dict "component" "postgres" "ports" (list (dict "name" "postgres" "port" 5432)))
+  (dict "component" "pipelinesinfra" "ports" (list (dict "name" "http" "port" 8080) (dict "name" "backend" "port" 8000)))
+  (dict "component" "query" "ports" (list (dict "name" "http" "port" 8080)))
+  (dict "component" "ui" "ports" (list (dict "name" "http" "port" 3000)))
+-}}
+{{- range $services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cd4pe.fullname" $root }}-{{ .component }}
+  labels:
+    {{- include "cd4pe.componentLabels" (dict "root" $root "component" .component) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    {{- range .ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .name }}
+      protocol: TCP
+    {{- end }}
+  selector:
+    {{- include "cd4pe.componentSelectorLabels" (dict "root" $root "component" .component) | nindent 4 }}
+{{- end }}

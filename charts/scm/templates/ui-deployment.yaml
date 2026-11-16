@@ -1,0 +1,84 @@
+{{- $component := "ui" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "scm.fullname" . }}-{{ $component }}
+  labels:
+    {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "scm.componentSelectorLabels" (dict "root" . "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
+    spec:
+      {{- include "scm.podCommon" . | nindent 6 }}
+      {{- include "scm.scheduling" .Values.ui | nindent 6 }}
+      initContainers:
+        # comply_ui_assessor_init: copies the assessor archives the UI serves to nodes.
+        - name: assessor-init
+          image: {{ include "scm.assessorImage" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["sh", "-c", {{ printf "cp /files/Assessor-CLI-*v%s.zip ." .Values.assessor.version | quote }}]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: assessors
+              mountPath: /Assessor-CLI
+      containers:
+        - name: ui
+          image: {{ include "scm.image" (dict "root" . "image" .Values.ui.image) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # From the complyadm 3.9.0 comply_ui service in functions/config.pp.
+          env:
+            - name: COMPLY_VERSION
+              value: {{ .Chart.AppVersion | quote }}
+            - name: ASSESSOR_VERSION
+              value: {{ .Values.assessor.version | quote }}
+            - name: QUERY_API
+              value: {{ printf "https://%s:443/v1/graphql" .Values.hostname | quote }}
+            - name: SCARP_API
+              value: {{ printf "https://%s:443/api/" .Values.hostname | quote }}
+            - name: HOST_FQDN
+              value: {{ .Values.hostname | quote }}
+            - name: HTTPS_PORT
+              value: "443"
+            - name: AUTH_PORT
+              value: "443"
+            - name: LOGGING
+              value: {{ .Values.logLevel | quote }}
+            - name: FEATURES
+              value: {{ .Values.features | quote }}
+            - name: CHECK_UPDATES
+              value: "false"
+          ports:
+            - name: http
+              containerPort: 3001
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 15
+            failureThreshold: 6
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 15
+            failureThreshold: 6
+          {{- with .Values.ui.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: assessors
+              mountPath: /usr/src/app/public/files
+      volumes:
+        - name: assessors
+          emptyDir: {}

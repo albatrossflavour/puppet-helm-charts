@@ -1,0 +1,222 @@
+# Default values for cd4pe.
+#
+# Three values have no default and must be set: hostname, backendHostname,
+# and rootUser.email.
+
+# -- Override the chart name used in resource names.
+nameOverride: ""
+# -- Override the full resource name prefix.
+fullnameOverride: ""
+
+global:
+  # -- Image pull secrets for every pod.
+  imagePullSecrets: []
+
+image:
+  # -- Registry and path prefix for all four product images.
+  registry: gcr.io/platform-services-297419
+  # -- Tag for all four product images. Defaults to the chart appVersion.
+  tag: ""
+  # -- Image pull policy.
+  pullPolicy: IfNotPresent
+
+# -- Hostname of the web UI, for example cd4pe.example.com. Required.
+hostname: ""
+# -- Hostname of the backend endpoint that VCS webhooks and job hardware call.
+# cd4peadm publishes this as http://<host>:8000. Required.
+backendHostname: ""
+
+rootUser:
+  # -- Login email of the root account. Required.
+  email: ""
+
+auth:
+  # -- Name of an existing Secret to use instead of generating one. It must
+  # hold the keys root-password, secret-key, postgres-password,
+  # cd4pe-db-password and query-db-password.
+  existingSecret: ""
+  # -- Root account password. Generated if empty. Must be 12 or more
+  # characters with upper case, lower case, a digit and a special character,
+  # or the product ignores it without an error.
+  rootPassword: ""
+  # -- Key the backend uses to encrypt secrets in its database: exactly 16
+  # bytes, base64 encoded, or the backend refuses to start. Generated if
+  # empty. Never change it after the first install.
+  secretKey: ""
+  # -- Postgres superuser password. Generated if empty.
+  postgresPassword: ""
+  # -- Password of the cd4pe database role. Generated if empty.
+  cd4peDbPassword: ""
+  # -- Password of the query database role. Generated if empty.
+  queryDbPassword: ""
+
+# -- Keep the generated Secret and the PVCs when the release is uninstalled.
+# The database passwords are fixed in the Postgres volume at first start, so
+# losing the Secret while keeping the volume locks the product out.
+keepOnUninstall: true
+
+serviceAccount:
+  # -- Create a ServiceAccount for the pods.
+  create: true
+  # -- ServiceAccount name. Defaults to the release full name.
+  name: ""
+  # -- Annotations for the ServiceAccount.
+  annotations: {}
+
+# -- Pod-level security context for every pod. The ui, pipelinesinfra and
+# postgres images start as root, so runAsNonRoot cannot be set here.
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+initImage:
+  # -- Small image with sh and awk, used to render pfi-config.json at start.
+  repository: docker.io/library/busybox
+  # -- Tag of the init image.
+  tag: "1.37.0"
+
+ingress:
+  # -- Create Ingress resources for the UI and the backend endpoint.
+  enabled: true
+  # -- Ingress class name.
+  className: ""
+  # -- Annotations for both Ingress resources.
+  annotations: {}
+  tls:
+    # -- Add a tls section to both Ingress resources.
+    enabled: true
+    # -- TLS Secret for the UI hostname. Empty uses the controller default certificate.
+    secretName: ""
+    # -- TLS Secret for the backend hostname. Empty uses the controller default certificate.
+    backendSecretName: ""
+
+pipelinesinfra:
+  image:
+    # -- Image name under image.registry.
+    repository: cd4pe/continuous-delivery-for-puppet-enterprise
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- JVM heap arguments, the cd4peadm java_args setting.
+  javaArgs: "-Xmx1024M -Xms1024M"
+  # -- Extra environment variables, for the optional cd4peadm settings such
+  # as CD4PE_JOB_GLOBAL_TIMEOUT_MINUTES or CD4PE_ENABLE_REPO_CACHING.
+  extraEnv: []
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 200m
+      memory: 1536Mi
+    limits:
+      memory: 3Gi
+  persistence:
+    # -- Size of the /disk volume.
+    size: 10Gi
+    # -- Storage class. Empty uses the cluster default.
+    storageClass: ""
+    # -- Use an existing PVC for /disk.
+    existingClaim: ""
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity.
+  affinity: {}
+
+query:
+  image:
+    # -- Image name under image.registry.
+    repository: query-service
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- Log level: INFO, DEBUG or TRACE.
+  logLevel: INFO
+  # -- Extra environment variables, for ENABLE_REPORT_TEMPLATES or QUERY_COMPLEXITY_LIMIT.
+  extraEnv: []
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 512Mi
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity. Ignored when queryToken.persistence.accessMode is ReadWriteOnce.
+  affinity: {}
+
+queryToken:
+  persistence:
+    # -- Access mode of the volume pipelinesinfra and query share. With
+    # ReadWriteOnce the chart pins the query pod to the pipelinesinfra pod's node.
+    accessMode: ReadWriteMany
+    # -- Size of the shared token volume.
+    size: 1Gi
+    # -- Storage class. Must support the access mode above.
+    storageClass: ""
+    # -- Use an existing PVC for the token.
+    existingClaim: ""
+
+ui:
+  image:
+    # -- Image name under image.registry.
+    repository: teams-ui
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 256Mi
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity.
+  affinity: {}
+
+postgresql:
+  image:
+    # -- Image name under image.registry.
+    repository: cd4pe-postgresql
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+  persistence:
+    # -- Size of the database volume.
+    size: 10Gi
+    # -- Storage class. Empty uses the cluster default.
+    storageClass: ""
+    # -- Use an existing PVC for the database.
+    existingClaim: ""
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity.
+  affinity: {}
+
+rootCredentialsJob:
+  # -- Run the post-install and post-upgrade job that sets the root email and password.
+  enabled: true
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+networkPolicy:
+  # -- Create a NetworkPolicy that limits ingress to the release's own pods,
+  # plus the UI and backend ports from anywhere. Egress is not restricted.
+  enabled: false

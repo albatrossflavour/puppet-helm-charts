@@ -1,0 +1,67 @@
+{{- $fullname := include "scm.fullname" . -}}
+{{- $hostname := required "hostname is required" .Values.hostname -}}
+{{- $adminBlock := "            return 403;" -}}
+{{- if .Values.frontdoor.keycloakAdminConsole -}}
+{{- $adminBlock = printf "            proxy_pass http://%s-identity:8080;\n            proxy_set_header   Connection keep-alive;\n            proxy_set_header   Host $host;\n            proxy_cache_bypass $http_upgrade;\n            proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;\n            proxy_set_header   X-Forwarded-Proto https;" $fullname -}}
+{{- end -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-config
+  labels:
+    {{- include "scm.labels" . | nindent 4 }}
+data:
+  frontdoor-nginx.conf: |
+    {{- .Files.Get "files/frontdoor-nginx.conf.tmpl" | replace "@@FULLNAME@@" $fullname | replace "@@ADMIN_BLOCK@@" $adminBlock | nindent 4 }}
+  mtls-proxy-nginx.conf: |
+    {{- .Files.Get "files/mtls-proxy-nginx.conf.tmpl" | replace "@@FULLNAME@@" $fullname | nindent 4 }}
+  oauth2_proxy.cfg: |
+    {{- .Files.Get "files/oauth2_proxy.cfg.tmpl" | replace "@@FULLNAME@@" $fullname | replace "@@HOSTNAME@@" $hostname | nindent 4 }}
+  postgresql.conf: |
+    {{- .Files.Get "files/postgresql.conf" | nindent 4 }}
+  pg_hba.conf: |
+    {{- .Files.Get "files/pg_hba.conf" | nindent 4 }}
+  # What complyadm does with templates/postgres/initdb.sql.epp, as a script so
+  # the passwords come from the environment and never sit in a file. The
+  # postgres entrypoint sources it once, when the data directory is empty.
+  10-scm-init.sh: |
+    psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER:-postgres}" --dbname postgres \
+      -v comply_pw="${COMPLY_DB_PASSWORD}" -v keycloak_pw="${KEYCLOAK_DB_PASSWORD}" <<'EOSQL'
+    CREATE USER comply WITH SUPERUSER PASSWORD :'comply_pw';
+    CREATE DATABASE comply;
+    GRANT ALL PRIVILEGES ON DATABASE comply TO comply;
+    CREATE USER keycloak WITH PASSWORD :'keycloak_pw';
+    CREATE DATABASE keycloak WITH OWNER keycloak;
+    GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;
+    EOSQL
+---
+# The Keycloak realm import with @@NAME@@ placeholders for the client secrets.
+# An init container on the identity pod fills them in from the Secret.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-realm-template
+  labels:
+    {{- include "scm.labels" . | nindent 4 }}
+data:
+  Puppet-realm.json: |
+    {{- .Files.Get "files/Puppet-realm.json.tmpl" | replace "@@HOSTNAME@@" $hostname | nindent 4 }}
+{{- if not .Values.pe.existingSecret }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-pe-certs-placeholder
+  labels:
+    {{- include "scm.labels" . | nindent 4 }}
+data:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    -----END CERTIFICATE-----
+  tls.crt: |
+    -----BEGIN CERTIFICATE-----
+    -----END CERTIFICATE-----
+  tls.key: |
+    -----BEGIN RSA PRIVATE KEY-----
+    -----END RSA PRIVATE KEY-----
+{{- end }}

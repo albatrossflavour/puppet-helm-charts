@@ -1,0 +1,4 @@
+hostname: cd4pe.example.com
+backendHostname: cd4pe-backend.example.com
+rootUser:
+  email: admin@example.com

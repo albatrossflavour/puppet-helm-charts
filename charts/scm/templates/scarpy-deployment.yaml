@@ -1,0 +1,149 @@
+{{- $component := "scarpy" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "scm.fullname" . }}-{{ $component }}
+  labels:
+    {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "scm.componentSelectorLabels" (dict "root" . "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
+    spec:
+      {{- include "scm.podCommon" . | nindent 6 }}
+      {{- include "scm.scheduling" .Values.scarpy | nindent 6 }}
+      # complyadm runs these two as their own units (comply_scarpy_assessor_init
+      # and comply_scarpy_init) and has each next unit poll for a sentinel file.
+      # initContainers run in order, so the commands are the same with the
+      # polling taken out.
+      initContainers:
+        - name: assessor-init
+          image: {{ include "scm.assessorImage" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["sh", "-c", "chmod o+w /Assessor-CLI && copy-benchmarks.sh"]
+          env:
+            - name: ASSESSOR_VERSION
+              value: {{ .Values.assessor.version | quote }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: benchmarks
+              mountPath: /Assessor-CLI
+        - name: scarpy-init
+          image: {{ include "scm.image" (dict "root" . "image" .Values.scarpy.initImage) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Fails until Postgres is up, and the pod restarts it.
+          command: ["sh", "-c", "scarp init /Assessor-CLI/benchmarks && scarp upgrade-assessor"]
+          env:
+            {{- include "scm.scarpEnv" . | nindent 12 }}
+            - name: MAX_IDLE_CONNS
+              value: "40"
+            - name: MAX_OPEN_CONNS
+              value: "80"
+            - name: IDLE_CONNS_LTS
+              value: "1"
+            - name: UPGRADE_PE_AGENT_RUN
+              value: "false"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: benchmarks
+              mountPath: /Assessor-CLI
+            - name: pe-certs
+              mountPath: /certs
+              readOnly: true
+      containers:
+        - name: scarpy
+          image: {{ include "scm.image" (dict "root" . "image" .Values.scarpy.image) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Exits if Redis is not up yet, so expect a restart or two on a cold start.
+          command: ["scarp", "api", "--unsafe"]
+          # From the complyadm 3.9.0 comply_scarpy service in functions/config.pp.
+          env:
+            {{- include "scm.scarpEnv" . | nindent 12 }}
+            - name: COMPLY_SERVER
+              value: {{ .Values.hostname | quote }}
+            - name: DESIRED_SCAN_ENDPOINT
+              value: {{ printf "http://%s-scarpy:8088/api/v3/pe/task/ciscatscan/runScheduledScan" (include "scm.fullname" .) | quote }}
+            - name: FEATURES
+              value: {{ .Values.features | quote }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "HASURA_ADMIN_SECRET" "key" "hasura-admin-secret") | nindent 12 }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "REDIS_PASSWORD" "key" "redis-password") | nindent 12 }}
+            # The kubelet expands $(REDIS_PASSWORD). The password goes into a
+            # URL as it is, so it must be URL-safe.
+            - name: WS_REPORT_PROCESSOR_URL
+              value: {{ printf "redis://:$(REDIS_PASSWORD)@%s-redis:6379/" (include "scm.fullname" .) | quote }}
+            - name: WS_PE_UPDATE_FACTS_POLLER_INTERVAL
+              value: {{ .Values.scarpy.factUpdateInterval | quote }}
+            - name: WS_PE_ASSESSOR_OUT_OF_DATE_POLLER_INTERVAL
+              value: {{ .Values.scarpy.assessorUpdateInterval | quote }}
+            - name: DATA_RETENTION_PERIOD
+              value: {{ .Values.scarpy.dataRetentionPeriod | quote }}
+            - name: OIDC_ISSUER_URL
+              value: {{ printf "http://%s-identity:8080/auth/realms/Puppet" (include "scm.fullname" .) | quote }}
+            - name: PROXY_TLS_HANDSHAKE_TIMEOUT
+              value: 10s
+            - name: PROXY_IDLE_CONN_TIMEOUT
+              value: 90s
+            - name: PROXY_RESPONSE_HEADER_TIMEOUT
+              value: 10s
+            - name: INTROSPECTION_BLOCKED
+              value: "true"
+            - name: MAX_GRAPHQL_BATCH_SIZE
+              value: "10"
+            - name: MAX_GRAPHQL_REQUESTS_LIMIT
+              value: "300"
+            - name: MAX_GRAPHQL_REQUESTS_WITHIN
+              value: "60"
+            {{- with .Values.scarpy.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8088
+              protocol: TCP
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 15
+            failureThreshold: 6
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 15
+            failureThreshold: 6
+          {{- with .Values.scarpy.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: benchmarks
+              mountPath: /Assessor-CLI
+            - name: pe-certs
+              mountPath: /certs
+              readOnly: true
+      volumes:
+        # complyadm keeps this as a named docker volume. It is refilled from
+        # the comply-assessor image on every start, so nothing in it needs to
+        # outlive the pod.
+        - name: benchmarks
+          emptyDir: {}
+        {{- include "scm.peCertsVolume" . | nindent 8 }}

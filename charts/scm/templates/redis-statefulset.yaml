@@ -1,0 +1,89 @@
+{{- $component := "redis" -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "scm.fullname" . }}-{{ $component }}
+  labels:
+    {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: {{ include "scm.fullname" . }}-{{ $component }}
+  selector:
+    matchLabels:
+      {{- include "scm.componentSelectorLabels" (dict "root" . "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "scm.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      # The image drops to 999:1000 but does not manage to chown a fresh block
+      # volume, and redis then cannot create its append-only directory. The
+      # kubelet sets the group instead.
+      securityContext:
+        {{- toYaml (merge (dict "fsGroup" .Values.redis.fsGroup "fsGroupChangePolicy" "OnRootMismatch") .Values.podSecurityContext) | nindent 8 }}
+      {{- include "scm.scheduling" .Values.redis | nindent 6 }}
+      initContainers:
+        # complyadm writes this file to /etc/puppetlabs/comply/redis.conf.
+        - name: render-redis-conf
+          image: {{ printf "%s:%s" .Values.initImage.repository .Values.initImage.tag | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              printf 'requirepass %s\nappendonly yes\n' "${REDIS_PASSWORD}" > /conf/redis.conf
+          env:
+            {{- include "scm.secretEnv" (dict "root" . "name" "REDIS_PASSWORD" "key" "redis-password") | nindent 12 }}
+          {{- include "scm.initContainerDefaults" . | nindent 10 }}
+          volumeMounts:
+            - name: conf
+              mountPath: /conf
+      containers:
+        - name: redis
+          image: {{ include "scm.image" (dict "root" . "image" .Values.redis.image) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+          env:
+            # redis-cli reads this, so the probes need no shell and no password argument.
+            {{- include "scm.secretEnv" (dict "root" . "name" "REDISCLI_AUTH" "key" "redis-password") | nindent 12 }}
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "-t", "5", "ping"]
+            periodSeconds: 15
+            timeoutSeconds: 6
+            failureThreshold: 4
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "-t", "5", "ping"]
+            periodSeconds: 15
+            timeoutSeconds: 6
+            failureThreshold: 4
+          {{- with .Values.redis.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: conf
+              mountPath: /usr/local/etc/redis
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-redis" (include "scm.fullname" .)) .Values.redis.persistence.existingClaim }}
+        - name: conf
+          emptyDir:
+            medium: Memory

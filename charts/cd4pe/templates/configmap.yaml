@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cd4pe.fullname" . }}-config
+  labels:
+    {{- include "cd4pe.labels" . | nindent 4 }}
+data:
+  base.conf.template: |
+    {{- .Files.Get "files/base.conf.template" | nindent 4 }}
+  log4j2.properties: |
+    {{- .Files.Get "files/log4j2.properties" | nindent 4 }}
+  postgresql.conf: |
+    {{- .Files.Get "files/postgresql.conf" | nindent 4 }}
+  pg_hba.conf: |
+    {{- .Files.Get "files/pg_hba.conf" | nindent 4 }}
+  # What cd4peadm does with templates/postgres/initdb.sql.epp, as a script so
+  # the passwords come from the environment and never sit in a file. The
+  # postgres entrypoint sources it once, when the data directory is empty.
+  10-cd4pe-init.sh: |
+    psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER:-postgres}" --dbname postgres \
+      -v cd4pe_pw="${CD4PE_DB_PASSWORD}" -v query_pw="${QUERY_DB_PASSWORD}" <<'EOSQL'
+    CREATE ROLE cd4pe LOGIN PASSWORD :'cd4pe_pw';
+    CREATE DATABASE cd4pe OWNER cd4pe;
+    CREATE ROLE query LOGIN PASSWORD :'query_pw';
+    CREATE DATABASE query OWNER query;
+    REVOKE CONNECT ON DATABASE cd4pe FROM query;
+    REVOKE CONNECT ON DATABASE query FROM cd4pe;
+    \connect "cd4pe"
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    CREATE EXTENSION IF NOT EXISTS lo;
+    CREATE EXTENSION IF NOT EXISTS pg_repack;
+    EOSQL

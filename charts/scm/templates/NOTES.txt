@@ -1,0 +1,22 @@
+Security Compliance Management {{ .Chart.AppVersion }} is starting.
+This chart is unofficial and unsupported.
+
+  URL:  https://{{ .Values.hostname }}
+
+The first login is user "comply" with password "compliance". It forces a
+password change of 12 or more characters.
+
+A cold start takes a few minutes. scarpy, graphql and gatekeeper restart until
+the services they depend on are up. Logins fail with a 500 at /oauth2/callback
+until {{ .Values.hostname }} resolves from inside the cluster.
+{{- if not .Values.mtlsProxy.enabled }}
+
+PE is not connected: the mTLS proxy is off. See the README for pe.existingSecret
+and mtlsProxy.enabled.
+{{- end }}
+{{- if .Values.keepOnUninstall }}
+
+The Secret and the PVCs are kept on uninstall. Delete them by hand for a clean slate:
+
+  kubectl delete secret,pvc -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+{{- end }}

@@ -1,0 +1,30 @@
+{{- $root := . -}}
+{{- $claims := list
+  (dict "component" "postgres" "p" .Values.postgresql.persistence "mode" "ReadWriteOnce")
+  (dict "component" "disk" "p" .Values.pipelinesinfra.persistence "mode" "ReadWriteOnce")
+  (dict "component" "query-token" "p" .Values.queryToken.persistence "mode" .Values.queryToken.persistence.accessMode)
+-}}
+{{- range $claims }}
+{{- if not .p.existingClaim }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "cd4pe.fullname" $root }}-{{ .component }}
+  labels:
+    {{- include "cd4pe.labels" $root | nindent 4 }}
+  {{- with (include "cd4pe.keepAnnotations" $root) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    - {{ .mode }}
+  {{- with .p.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .p.size | quote }}
+{{- end }}
+{{- end }}

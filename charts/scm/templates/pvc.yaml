@@ -1,0 +1,29 @@
+{{- $root := . -}}
+{{- $claims := list
+  (dict "component" "postgres" "p" .Values.postgresql.persistence)
+  (dict "component" "redis" "p" .Values.redis.persistence)
+-}}
+{{- range $claims }}
+{{- if not .p.existingClaim }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "scm.fullname" $root }}-{{ .component }}
+  labels:
+    {{- include "scm.labels" $root | nindent 4 }}
+  {{- with (include "scm.keepAnnotations" $root) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- with .p.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .p.size | quote }}
+{{- end }}
+{{- end }}

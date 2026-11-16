@@ -1,0 +1,49 @@
+# From complyadm 3.9.0 templates/gatekeeper/oauth2_proxy.cfg.epp.
+# The upstream names differ, and client_secret and cookie_secret are left out:
+# they come from OAUTH2_PROXY_CLIENT_SECRET and OAUTH2_PROXY_COOKIE_SECRET.
+# @@FULLNAME@@ and @@HOSTNAME@@ are replaced by the chart.
+http_address="0.0.0.0:3001"
+
+reverse_proxy="true"
+redirect_url="https://@@HOSTNAME@@:443/oauth2/callback"
+
+upstreams=["http://@@FULLNAME@@-scarpy:8088/api/",
+  "http://@@FULLNAME@@-scarpy:8088/openapi.json",
+  "http://@@FULLNAME@@-scarpy:8088/v1/graphql",
+  "http://@@FULLNAME@@-ui:3001/"
+]
+
+whitelist_domains=["@@HOSTNAME@@:*"]
+
+client_id="comply"
+
+pass_access_token="true"
+
+set_xauthrequest="true"
+set_authorization_header="true"
+pass_authorization_header="true"
+
+cookie_domains="@@HOSTNAME@@"
+cookie_name="puppet_comply"
+cookie_secure="true"
+cookie_httponly="false"
+cookie_expire="1h"
+cookie_refresh="1m"
+email_domains=["*"]
+
+keycloak_groups=["/Member"]
+oidc_email_claim="preferred_username"
+
+ssl_upstream_insecure_skip_verify="true"
+ssl_insecure_skip_verify="true"
+skip_jwt_bearer_tokens="true"
+insecure_oidc_skip_issuer_verification="true"
+insecure_oidc_allow_unverified_email="true"
+provider="oidc"
+provider_display_name="Keycloak"
+extra_jwt_issuers = "https://@@HOSTNAME@@:443/auth/realms/Puppet=account"
+oidc_issuer_url="https://@@HOSTNAME@@:443/auth/realms/Puppet"
+validate_url="https://@@HOSTNAME@@:443/auth/realms/Puppet/protocol/openid-connect/userinfo"
+redeem_url="https://@@HOSTNAME@@:443/auth/realms/Puppet/protocol/openid-connect/token"
+skip_provider_button="true"
+upstream_timeout="300s"

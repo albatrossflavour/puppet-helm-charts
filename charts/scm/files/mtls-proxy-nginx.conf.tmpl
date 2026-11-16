@@ -1,0 +1,80 @@
+# SCM mTLS proxy nginx config for Kubernetes.
+# Derived from complyadm 3.9.0 templates/mtls_proxy/nginx_conf.epp. Changes:
+#   - upstreams are Service names in upstream blocks, so no docker resolver
+# @@FULLNAME@@ is replaced by the chart.
+worker_processes auto;
+
+error_log /dev/stderr notice;
+
+events {
+  worker_connections 8192;
+}
+
+http {
+  server_tokens off;
+
+  upstream comply_scarpy {
+    server @@FULLNAME@@-scarpy:8088;
+  }
+
+  upstream comply_ui {
+    server @@FULLNAME@@-ui:3001;
+  }
+
+  server {
+    listen 8081;
+
+    location /health {
+      access_log off;
+      add_header Content-Type text/plain;
+      return 200 'OK';
+    }
+  }
+
+  server {
+    listen 8080 ssl backlog=4096;
+
+    ssl_certificate         /certs/tls.crt;
+    ssl_certificate_key     /certs/tls.key;
+    ssl_protocols           TLSv1.2;
+    ssl_client_certificate  /certs/ca.crt;
+    ssl_verify_client       on;
+    ssl_verify_depth        10;
+
+    location /api/v3/core/store/report {
+      # Request buffering is off so nginx does not accept reports faster
+      # than scarpy can take them.
+      client_max_body_size 0;
+      proxy_http_version 1.1;
+      proxy_request_buffering off;
+      proxy_pass http://comply_scarpy/api/v3/core/store/report;
+    }
+
+    location /api/v3/uc/store-report {
+      client_max_body_size 0;
+      proxy_http_version 1.1;
+      proxy_request_buffering off;
+      proxy_pass http://comply_scarpy/api/v3/uc/store-report;
+    }
+
+    location /api/v3/core/assessorVersion {
+      proxy_pass http://comply_scarpy/api/v3/core/assessorVersion;
+    }
+
+    location /api/v3/core/desiredCompliance {
+      proxy_pass http://comply_scarpy/api/v3/core/desiredCompliance$is_args$args;
+    }
+
+    location /assessor/windows {
+      proxy_pass http://comply_ui/files/assessor/windows;
+    }
+
+    location /assessor/linux {
+      proxy_pass http://comply_ui/files/assessor/linux;
+    }
+
+    location /assessor/mac {
+      proxy_pass http://comply_ui/files/assessor/mac;
+    }
+  }
+}

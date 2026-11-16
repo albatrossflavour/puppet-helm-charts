@@ -1,0 +1,54 @@
+{{- $root := . -}}
+{{- $services := list
+  (dict "component" "postgres" "name" "postgres" "port" 5432)
+  (dict "component" "redis" "name" "redis" "port" 6379)
+  (dict "component" "graphql" "name" "http" "port" 8080)
+  (dict "component" "identity" "name" "http" "port" 8080)
+  (dict "component" "scarpy" "name" "http" "port" 8088)
+  (dict "component" "ui" "name" "http" "port" 3001)
+  (dict "component" "gatekeeper" "name" "http" "port" 3001)
+  (dict "component" "frontdoor" "name" "http" "port" 8080)
+-}}
+{{- range $services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "scm.fullname" $root }}-{{ .component }}
+  labels:
+    {{- include "scm.componentLabels" (dict "root" $root "component" .component) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .name }}
+      protocol: TCP
+  selector:
+    {{- include "scm.componentSelectorLabels" (dict "root" $root "component" .component) | nindent 4 }}
+{{- end }}
+{{- if .Values.mtlsProxy.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "scm.fullname" . }}-mtls-proxy
+  labels:
+    {{- include "scm.componentLabels" (dict "root" . "component" "mtls-proxy") | nindent 4 }}
+  {{- with .Values.mtlsProxy.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.mtlsProxy.service.type }}
+  ports:
+    - name: mtls
+      port: {{ .Values.mtlsProxy.service.port }}
+      targetPort: mtls
+      protocol: TCP
+      {{- if eq .Values.mtlsProxy.service.type "NodePort" }}
+      nodePort: {{ .Values.mtlsProxy.service.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "scm.componentSelectorLabels" (dict "root" . "component" "mtls-proxy") | nindent 4 }}
+{{- end }}

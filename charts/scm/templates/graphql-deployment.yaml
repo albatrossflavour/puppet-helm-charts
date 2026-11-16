@@ -1,0 +1,75 @@
+{{- $component := "graphql" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "scm.fullname" . }}-{{ $component }}
+  labels:
+    {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "scm.componentSelectorLabels" (dict "root" . "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
+    spec:
+      {{- include "scm.podCommon" . | nindent 6 }}
+      {{- include "scm.scheduling" .Values.graphql | nindent 6 }}
+      containers:
+        - name: graphql
+          image: {{ include "scm.image" (dict "root" . "image" .Values.graphql.image) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Exits if Postgres is not up yet, so expect a restart or two on a cold start.
+          env:
+            {{- include "scm.secretEnv" (dict "root" . "name" "COMPLY_DB_PASSWORD" "key" "comply-db-password") | nindent 12 }}
+            # The kubelet expands $(COMPLY_DB_PASSWORD). The password goes into
+            # a URL as it is, so it must be URL-safe.
+            - name: HASURA_GRAPHQL_DATABASE_URL
+              value: {{ printf "postgres://comply:$(COMPLY_DB_PASSWORD)@%s-postgres:5432/comply" (include "scm.fullname" .) | quote }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "HASURA_GRAPHQL_ADMIN_SECRET" "key" "hasura-admin-secret") | nindent 12 }}
+            - name: HASURA_SCARP_API_URL
+              value: {{ printf "http://%s-scarpy:8088/api" (include "scm.fullname" .) | quote }}
+            - name: HASURA_GRAPHQL_AUTH_HOOK
+              value: {{ printf "http://%s-scarpy:8088/api/hasura/auth" (include "scm.fullname" .) | quote }}
+            - name: HASURA_GRAPHQL_ENABLE_CONSOLE
+              value: "true"
+            - name: HASURA_GRAPHQL_ENABLE_TELEMETRY
+              value: "false"
+            - name: HASURA_GRAPHQL_DEV_MODE
+              value: "false"
+            - name: HASURA_GRAPHQL_V1_BOOLEAN_NULL_COLLAPSE
+              value: "true"
+            - name: HASURA_GRAPHQL_LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: HASURA_GRAPHQL_CORS_DOMAIN
+              value: {{ printf "https://%s" .Values.hostname | quote }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 6
+          {{- with .Values.graphql.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}

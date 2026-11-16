@@ -1,0 +1,67 @@
+{{- $component := "gatekeeper" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "scm.fullname" . }}-{{ $component }}
+  labels:
+    {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "scm.componentSelectorLabels" (dict "root" . "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- include "scm.podCommon" . | nindent 6 }}
+      {{- include "scm.scheduling" .Values.gatekeeper | nindent 6 }}
+      {{- with .Values.gatekeeper.hostAliases }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: gatekeeper
+          image: {{ include "scm.image" (dict "root" . "image" .Values.gatekeeper.image) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # oauth2-proxy calls Keycloak on the public hostname for discovery,
+          # token redemption and userinfo, as on a complyadm install. Here that
+          # goes out to the ingress and back in through frontdoor. It exits
+          # until discovery answers, so expect restarts on a cold start
+          # (complyadm gives this unit RestartSec=30 for the same reason).
+          args: ["--config=/etc/oauth2-proxy/oauth2_proxy.cfg"]
+          env:
+            {{- include "scm.secretEnv" (dict "root" . "name" "OAUTH2_PROXY_CLIENT_SECRET" "key" "client-secret") | nindent 12 }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "OAUTH2_PROXY_COOKIE_SECRET" "key" "cookie-secret") | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 3001
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            periodSeconds: 15
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            periodSeconds: 15
+            failureThreshold: 6
+          {{- with .Values.gatekeeper.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/oauth2-proxy/oauth2_proxy.cfg
+              subPath: oauth2_proxy.cfg
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "scm.fullname" . }}-config

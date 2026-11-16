@@ -1,0 +1,21 @@
+Continuous Delivery for Puppet Enterprise {{ .Chart.AppVersion }} is starting.
+This chart is unofficial and unsupported.
+
+  UI:       https://{{ .Values.hostname }}
+  Backend:  https://{{ .Values.backendHostname }}  (VCS webhooks and job hardware)
+
+Root login is {{ .Values.rootUser.email }}. Read the password with:
+
+  kubectl get secret {{ include "cd4pe.secretName" . }} -n {{ .Release.Namespace }} \
+    -o jsonpath='{.data.root-password}' | base64 -d
+
+A cold start takes a few minutes. pipelinesinfra restarts until Postgres is up,
+and the query pod is not Ready until pipelinesinfra has written its token.
+
+Not included: a licence, trusted certificates, job-certs.pem, backup and restore.
+{{- if .Values.keepOnUninstall }}
+
+The Secret and the PVCs are kept on uninstall. Delete them by hand for a clean slate:
+
+  kubectl delete secret,pvc -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+{{- end }}

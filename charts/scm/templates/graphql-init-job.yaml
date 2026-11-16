@@ -1,0 +1,50 @@
+{{- if .Values.graphqlInitJob.enabled -}}
+{{- $component := "graphql-init" -}}
+{{- /*
+comply_graphql_init: loads the Hasura metadata and recreates the event
+triggers. It needs Hasura up and the schema scarpy-init creates, which is what
+Helm waiting for every pod to be Ready gives it.
+*/ -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "scm.fullname" . }}-{{ $component }}
+  labels:
+    {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
+    spec:
+      {{- include "scm.podCommon" . | nindent 6 }}
+      restartPolicy: OnFailure
+      containers:
+        - name: graphql-init
+          image: {{ include "scm.image" (dict "root" . "image" .Values.graphqlInitJob.image) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: HASURA_ENDPOINT
+              value: {{ printf "http://%s-graphql:8080" (include "scm.fullname" .) | quote }}
+            - name: POSTGRES_HOSTNAME
+              value: {{ include "scm.fullname" . }}-postgres
+            - name: SCARP_DEBUG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: DB_USER
+              value: comply
+            {{- include "scm.secretEnv" (dict "root" . "name" "DB_PASSWORD" "key" "comply-db-password") | nindent 12 }}
+            {{- include "scm.secretEnv" (dict "root" . "name" "HASURA_ADMIN_SECRET" "key" "hasura-admin-secret") | nindent 12 }}
+            - name: QUERY_API
+              value: {{ printf "http://%s-graphql:8080/v1" (include "scm.fullname" .) | quote }}
+            - name: DESIRED_SCAN_ENDPOINT
+              value: {{ printf "http://%s-scarpy:8088/api/v3/pe/task/ciscatscan/runScheduledScan" (include "scm.fullname" .) | quote }}
+          {{- with .Values.graphqlInitJob.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

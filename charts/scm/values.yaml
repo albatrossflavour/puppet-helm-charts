@@ -1,0 +1,344 @@
+# Default values for scm.
+#
+# One value has no default and must be set: hostname.
+
+# -- Override the chart name used in resource names.
+nameOverride: ""
+# -- Override the full resource name prefix.
+fullnameOverride: ""
+
+global:
+  # -- Image pull secrets for every pod.
+  imagePullSecrets: []
+
+image:
+  # -- Registry and path prefix for all product images.
+  registry: gcr.io/platform-services-297419/compliance
+  # -- Tag for all product images except the assessor. Defaults to "v" plus the chart appVersion.
+  tag: ""
+  # -- Image pull policy.
+  pullPolicy: IfNotPresent
+
+assessor:
+  # -- CIS-CAT assessor version. It is the tag of the comply-assessor image
+  # and is passed to scarpy and the UI. complyadm 3.9.0 supports 4.65.0,
+  # 4.63.0 and 4.60.0.
+  version: "4.65.0"
+  image:
+    # -- Image name under image.registry.
+    repository: comply-assessor
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+
+# -- Hostname users and PE reach SCM on, for example scm.example.com. Required.
+# It must resolve from inside the cluster too: the gatekeeper calls Keycloak on it.
+hostname: ""
+
+# -- Log level for the product services.
+logLevel: info
+
+# -- Value of the FEATURES variable, the complyadm dev.features setting.
+features: cem_up_sell
+
+auth:
+  # -- Name of an existing Secret to use instead of generating one. See the
+  # README for the sixteen keys it must hold.
+  existingSecret: ""
+  # -- Values to use instead of generated ones, keyed by Secret key, for
+  # example {"redis-password": "..."}. Ignored with existingSecret.
+  overrides: {}
+
+# -- Keep the generated Secret and the PVCs when the release is uninstalled.
+# The database passwords and the Keycloak realm are fixed at first start, so
+# losing the Secret while keeping the volume locks the product out.
+keepOnUninstall: true
+
+serviceAccount:
+  # -- Create a ServiceAccount for the pods.
+  create: true
+  # -- ServiceAccount name. Defaults to the release full name.
+  name: ""
+  # -- Annotations for the ServiceAccount.
+  annotations: {}
+
+# -- Pod-level security context for every pod. The nginx, redis and postgres
+# images start as root, so runAsNonRoot cannot be set here.
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+initImage:
+  # -- Small image with sh and awk, used to render config files at start.
+  repository: docker.io/library/busybox
+  # -- Tag of the init image.
+  tag: "1.37.0"
+
+ingress:
+  # -- Create an Ingress in front of frontdoor.
+  enabled: true
+  # -- Ingress class name.
+  className: ""
+  # -- Annotations for the Ingress. Report uploads are large, so lift the
+  # controller's body size limit here. Do not set a proxy buffer size larger
+  # than the controller's busy buffer size: ingress-nginx then rejects its
+  # whole generated config.
+  annotations: {}
+  tls:
+    # -- Add a tls section to the Ingress.
+    enabled: true
+    # -- TLS Secret. Empty uses the controller default certificate.
+    secretName: ""
+
+postgresql:
+  image:
+    # -- Image name under image.registry.
+    repository: postgres
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+  persistence:
+    # -- Size of the database volume.
+    size: 10Gi
+    # -- Storage class. Empty uses the cluster default.
+    storageClass: ""
+    # -- Use an existing PVC for the database.
+    existingClaim: ""
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity.
+  affinity: {}
+
+redis:
+  image:
+    # -- Image name under image.registry.
+    repository: redis
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- Group the kubelet gives the data volume. The image drops to 999:1000
+  # and does not chown a fresh block volume itself.
+  fsGroup: 1000
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 256Mi
+  persistence:
+    # -- Size of the redis volume.
+    size: 1Gi
+    # -- Storage class. Empty uses the cluster default.
+    storageClass: ""
+    # -- Use an existing PVC for redis.
+    existingClaim: ""
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity.
+  affinity: {}
+
+graphql:
+  image:
+    # -- Image name under image.registry.
+    repository: hasura-graphql-engine
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 512Mi
+    limits:
+      memory: 1536Mi
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity.
+  affinity: {}
+
+identity:
+  image:
+    # -- Image name under image.registry.
+    repository: comply-identity
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- JVM options for Keycloak.
+  javaOpts: "-Xms64m -Xmx512m"
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1536Mi
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity.
+  affinity: {}
+
+scarpy:
+  image:
+    # -- Image name under image.registry.
+    repository: scarp
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  initImage:
+    # -- Image name under image.registry for the scarp-init container.
+    repository: scarp-init
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- How long scan data is kept, the complyadm data_retention_period setting. "0" keeps everything.
+  dataRetentionPeriod: "0"
+  # -- How often facts are refreshed from PE.
+  factUpdateInterval: 24h
+  # -- How often the assessor version on nodes is checked.
+  assessorUpdateInterval: 1h
+  # -- Extra environment variables.
+  extraEnv: []
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 1Gi
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity.
+  affinity: {}
+
+ui:
+  image:
+    # -- Image name under image.registry.
+    repository: comply-ui
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- Resource requests and limits. The assessor archives (about 1 GB) are
+  # copied into an emptyDir at start, which counts against ephemeral storage.
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 2560Mi
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity.
+  affinity: {}
+
+gatekeeper:
+  image:
+    # -- Image name under image.registry.
+    repository: oauth2-proxy
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- Host aliases for the gatekeeper pod. Use this to point hostname at the
+  # ingress controller if the name does not resolve from inside the cluster.
+  hostAliases: []
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 256Mi
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity.
+  affinity: {}
+
+frontdoor:
+  image:
+    # -- Image name under image.registry.
+    repository: nginx
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- Expose the Keycloak admin console under /auth/admin, the complyadm
+  # admin_console_enabled setting.
+  keycloakAdminConsole: false
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 256Mi
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity.
+  affinity: {}
+
+pe:
+  # -- Secret holding the certificate SCM presents to PE and the PE CA, with
+  # keys ca.crt, tls.crt and tls.key. Generate it on the PE primary with
+  # `puppetserver ca generate --certname <hostname>`. Empty mounts the same
+  # empty placeholder files complyadm ships.
+  existingSecret: ""
+
+mtlsProxy:
+  # -- Deploy the mTLS proxy PE and its agents report to. Needs pe.existingSecret.
+  # Written from the complyadm template and not yet run against a PE install.
+  enabled: false
+  service:
+    # -- Service type for the mTLS port: NodePort or LoadBalancer.
+    type: NodePort
+    # -- Service port. complyadm publishes 30303.
+    port: 30303
+    # -- Node port when type is NodePort.
+    nodePort: 30303
+    # -- Annotations for the Service.
+    annotations: {}
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      memory: 256Mi
+  # -- Node selector.
+  nodeSelector: {}
+  # -- Tolerations.
+  tolerations: []
+  # -- Affinity.
+  affinity: {}
+
+graphqlInitJob:
+  # -- Run the post-install and post-upgrade job that loads the Hasura metadata.
+  enabled: true
+  image:
+    # -- Image name under image.registry.
+    repository: hasura-metadata
+    # -- Image digest (sha256:...). Overrides the tag when set.
+    digest: ""
+  # -- Resource requests and limits.
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 512Mi
+
+networkPolicy:
+  # -- Create a NetworkPolicy that limits ingress to the release's own pods,
+  # plus the frontdoor and mTLS ports from anywhere. Egress is not restricted.
+  enabled: false

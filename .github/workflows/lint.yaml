@@ -1,0 +1,29 @@
+name: Lint charts
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: [cd4pe, scm]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Install kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz | tar -xz kubeconform
+          sudo install kubeconform /usr/local/bin/kubeconform
+      - name: Helm lint
+        run: helm lint charts/${{ matrix.chart }} --strict -f charts/${{ matrix.chart }}/ci/test-values.yaml
+      - name: Render and validate against Kubernetes schemas
+        run: |
+          helm template t charts/${{ matrix.chart }} -f charts/${{ matrix.chart }}/ci/test-values.yaml \
+            | kubeconform -strict -summary

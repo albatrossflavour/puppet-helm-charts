@@ -1,0 +1,15 @@
+apiVersion: v2
+name: cd4pe
+description: Continuous Delivery for Puppet Enterprise on Kubernetes. Unofficial and unsupported.
+type: application
+version: 0.1.0
+appVersion: "5.18.0"
+kubeVersion: ">=1.25.0-0"
+keywords:
+  - puppet
+  - cd4pe
+  - continuous-delivery
+home: https://www.puppet.com/docs/continuous-delivery/
+annotations:
+  # The Bolt module release this chart was last ported from.
+  puppet-helm-charts/ported-from: cd4peadm 5.18.0

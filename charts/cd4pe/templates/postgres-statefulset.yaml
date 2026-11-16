@@ -1,0 +1,100 @@
+{{- $component := "postgres" -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "cd4pe.fullname" . }}-{{ $component }}
+  labels:
+    {{- include "cd4pe.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: {{ include "cd4pe.fullname" . }}-{{ $component }}
+  selector:
+    matchLabels:
+      {{- include "cd4pe.componentSelectorLabels" (dict "root" . "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cd4pe.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- include "cd4pe.podCommon" . | nindent 6 }}
+      {{- include "cd4pe.scheduling" .Values.postgresql | nindent 6 }}
+      containers:
+        - name: postgres
+          image: {{ include "cd4pe.image" (dict "root" . "image" .Values.postgresql.image) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # The entrypoint starts as root to chown its directories, then drops to uid 999.
+          args:
+            - /usr/lib/postgresql/17/bin/postgres
+            - -c
+            - config_file=/var/lib/postgresql/conf/postgresql.conf
+            - -c
+            - hba_file=/var/lib/postgresql/conf/pg_hba.conf
+          env:
+            # A subdirectory, so a lost+found on the volume does not stop initdb.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cd4pe.secretName" . }}
+                  key: postgres-password
+            - name: CD4PE_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cd4pe.secretName" . }}
+                  key: cd4pe-db-password
+            - name: QUERY_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cd4pe.secretName" . }}
+                  key: query-db-password
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          # Over the unix socket: pg_hba.conf rejects the postgres user over TCP.
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          {{- with .Values.postgresql.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: config
+              mountPath: /var/lib/postgresql/conf/postgresql.conf
+              subPath: postgresql.conf
+              readOnly: true
+            - name: config
+              mountPath: /var/lib/postgresql/conf/pg_hba.conf
+              subPath: pg_hba.conf
+              readOnly: true
+            - name: config
+              mountPath: /docker-entrypoint-initdb.d/10-cd4pe-init.sh
+              subPath: 10-cd4pe-init.sh
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-postgres" (include "cd4pe.fullname" .)) .Values.postgresql.persistence.existingClaim }}
+        - name: config
+          configMap:
+            name: {{ include "cd4pe.fullname" . }}-config

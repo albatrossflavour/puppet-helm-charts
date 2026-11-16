@@ -1,0 +1,109 @@
+{{- $component := "pipelinesinfra" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cd4pe.fullname" . }}-{{ $component }}
+  labels:
+    {{- include "cd4pe.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
+spec:
+  replicas: 1
+  # One writer on the /disk volume.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "cd4pe.componentSelectorLabels" (dict "root" . "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cd4pe.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- include "cd4pe.podCommon" . | nindent 6 }}
+      {{- include "cd4pe.scheduling" .Values.pipelinesinfra | nindent 6 }}
+      initContainers:
+        {{- include "cd4pe.pfiConfigInit" . | nindent 8 }}
+      containers:
+        - name: pipelinesinfra
+          image: {{ include "cd4pe.image" (dict "root" . "image" .Values.pipelinesinfra.image) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Exits if Postgres is not up yet, so expect a restart or two on a cold start.
+          env:
+            {{- include "cd4pe.backendEnv" . | nindent 12 }}
+            - name: JVM_ARGS
+              value: {{ printf "-Duser.timezone=UTC -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/jvm_heap_dumps/pipelinesinfra.hprof %s" .Values.pipelinesinfra.javaArgs | quote }}
+            {{- with .Values.pipelinesinfra.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: backend
+              containerPort: 8000
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /status
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            # The first start runs every Liquibase migration.
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          {{- with .Values.pipelinesinfra.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: disk
+              mountPath: /disk
+            - name: query-token
+              mountPath: /etc/puppetlabs/cd4pe/query-service
+            - name: pfi-config
+              mountPath: /etc/cd4pe/pfi-config.json
+              subPath: pfi-config.json
+              readOnly: true
+            - name: config
+              mountPath: /opt/pfi/log4j2.properties
+              subPath: log4j2.properties
+              readOnly: true
+            - name: heap-dumps
+              mountPath: /jvm_heap_dumps
+            - name: licence
+              mountPath: /etc/puppetlabs/cd4pe/license
+            - name: logs
+              mountPath: /app/logs
+      volumes:
+        - name: disk
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-disk" (include "cd4pe.fullname" .)) .Values.pipelinesinfra.persistence.existingClaim }}
+        - name: query-token
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-query-token" (include "cd4pe.fullname" .)) .Values.queryToken.persistence.existingClaim }}
+        - name: pfi-config
+          emptyDir:
+            medium: Memory
+        - name: config
+          configMap:
+            name: {{ include "cd4pe.fullname" . }}-config
+        - name: heap-dumps
+          emptyDir: {}
+        - name: licence
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}

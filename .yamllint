@@ -1,0 +1,12 @@
+# For values files and rendered output. Templates are not valid YAML until
+# rendered, so they are ignored.
+extends: default
+ignore: |
+  charts/*/templates/
+rules:
+  line-length: disable
+  document-start: disable
+  comments:
+    min-spaces-from-content: 1
+  truthy:
+    check-keys: false
