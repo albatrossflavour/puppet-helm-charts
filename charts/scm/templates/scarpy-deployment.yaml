@@ -16,7 +16,9 @@ spec:
         {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
     spec:
       {{- include "scm.podCommon" . | nindent 6 }}
-      {{- include "scm.scheduling" .Values.scarpy | nindent 6 }}
+      {{- with (include "scm.scheduling" .Values.scarpy) }}
+      {{- . | nindent 6 }}
+      {{- end }}
       # complyadm runs these two as their own units (comply_scarpy_assessor_init
       # and comply_scarpy_init) and has each next unit poll for a sentinel file.
       # initContainers run in order, so the commands are the same with the

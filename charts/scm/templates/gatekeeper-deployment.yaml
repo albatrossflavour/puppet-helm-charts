@@ -18,7 +18,9 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       {{- include "scm.podCommon" . | nindent 6 }}
-      {{- include "scm.scheduling" .Values.gatekeeper | nindent 6 }}
+      {{- with (include "scm.scheduling" .Values.gatekeeper) }}
+      {{- . | nindent 6 }}
+      {{- end }}
       {{- with .Values.gatekeeper.hostAliases }}
       hostAliases:
         {{- toYaml . | nindent 8 }}

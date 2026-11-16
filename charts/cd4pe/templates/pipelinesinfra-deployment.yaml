@@ -21,7 +21,9 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       {{- include "cd4pe.podCommon" . | nindent 6 }}
-      {{- include "cd4pe.scheduling" .Values.pipelinesinfra | nindent 6 }}
+      {{- with (include "cd4pe.scheduling" .Values.pipelinesinfra) }}
+      {{- . | nindent 6 }}
+      {{- end }}
       initContainers:
         {{- include "cd4pe.pfiConfigInit" . | nindent 8 }}
       containers:

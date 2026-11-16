@@ -16,7 +16,9 @@ spec:
         {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
     spec:
       {{- include "scm.podCommon" . | nindent 6 }}
-      {{- include "scm.scheduling" .Values.graphql | nindent 6 }}
+      {{- with (include "scm.scheduling" .Values.graphql) }}
+      {{- . | nindent 6 }}
+      {{- end }}
       containers:
         - name: graphql
           image: {{ include "scm.image" (dict "root" . "image" .Values.graphql.image) | quote }}

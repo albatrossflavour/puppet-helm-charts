@@ -110,13 +110,13 @@ the kubelet inject CD4PE_POSTGRES_PORT and similar into every pod, and the
 backend reads CD4PE_* for its own configuration.
 */}}
 {{- define "cd4pe.podCommon" -}}
+serviceAccountName: {{ include "cd4pe.serviceAccountName" . }}
+automountServiceAccountToken: false
+enableServiceLinks: false
 {{- with .Values.global.imagePullSecrets }}
 imagePullSecrets:
   {{- toYaml . | nindent 2 }}
 {{- end }}
-serviceAccountName: {{ include "cd4pe.serviceAccountName" . }}
-automountServiceAccountToken: false
-enableServiceLinks: false
 {{- with .Values.podSecurityContext }}
 securityContext:
   {{- toYaml . | nindent 2 }}

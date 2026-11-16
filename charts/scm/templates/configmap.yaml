@@ -12,15 +12,15 @@ metadata:
     {{- include "scm.labels" . | nindent 4 }}
 data:
   frontdoor-nginx.conf: |
-    {{- .Files.Get "files/frontdoor-nginx.conf.tmpl" | replace "@@FULLNAME@@" $fullname | replace "@@ADMIN_BLOCK@@" $adminBlock | nindent 4 }}
+    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/frontdoor-nginx.conf.tmpl" | replace "@@FULLNAME@@" $fullname | replace "@@ADMIN_BLOCK@@" $adminBlock | nindent 4) "" }}
   mtls-proxy-nginx.conf: |
-    {{- .Files.Get "files/mtls-proxy-nginx.conf.tmpl" | replace "@@FULLNAME@@" $fullname | nindent 4 }}
+    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/mtls-proxy-nginx.conf.tmpl" | replace "@@FULLNAME@@" $fullname | nindent 4) "" }}
   oauth2_proxy.cfg: |
-    {{- .Files.Get "files/oauth2_proxy.cfg.tmpl" | replace "@@FULLNAME@@" $fullname | replace "@@HOSTNAME@@" $hostname | nindent 4 }}
+    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/oauth2_proxy.cfg.tmpl" | replace "@@FULLNAME@@" $fullname | replace "@@HOSTNAME@@" $hostname | nindent 4) "" }}
   postgresql.conf: |
-    {{- .Files.Get "files/postgresql.conf" | nindent 4 }}
+    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/postgresql.conf" | nindent 4) "" }}
   pg_hba.conf: |
-    {{- .Files.Get "files/pg_hba.conf" | nindent 4 }}
+    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/pg_hba.conf" | nindent 4) "" }}
   # What complyadm does with templates/postgres/initdb.sql.epp, as a script so
   # the passwords come from the environment and never sit in a file. The
   # postgres entrypoint sources it once, when the data directory is empty.
@@ -45,7 +45,7 @@ metadata:
     {{- include "scm.labels" . | nindent 4 }}
 data:
   Puppet-realm.json: |
-    {{- .Files.Get "files/Puppet-realm.json.tmpl" | replace "@@HOSTNAME@@" $hostname | nindent 4 }}
+    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/Puppet-realm.json.tmpl" | replace "@@HOSTNAME@@" $hostname | nindent 4) "" }}
 {{- if not .Values.pe.existingSecret }}
 ---
 apiVersion: v1

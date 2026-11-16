@@ -28,7 +28,9 @@ spec:
       # kubelet sets the group instead.
       securityContext:
         {{- toYaml (merge (dict "fsGroup" .Values.redis.fsGroup "fsGroupChangePolicy" "OnRootMismatch") .Values.podSecurityContext) | nindent 8 }}
-      {{- include "scm.scheduling" .Values.redis | nindent 6 }}
+      {{- with (include "scm.scheduling" .Values.redis) }}
+      {{- . | nindent 6 }}
+      {{- end }}
       initContainers:
         # complyadm writes this file to /etc/puppetlabs/comply/redis.conf.
         - name: render-redis-conf

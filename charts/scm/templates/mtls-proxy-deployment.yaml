@@ -20,7 +20,9 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       {{- include "scm.podCommon" . | nindent 6 }}
-      {{- include "scm.scheduling" .Values.mtlsProxy | nindent 6 }}
+      {{- with (include "scm.scheduling" .Values.mtlsProxy) }}
+      {{- . | nindent 6 }}
+      {{- end }}
       containers:
         - name: mtls-proxy
           image: {{ include "scm.image" (dict "root" . "image" .Values.frontdoor.image) | quote }}

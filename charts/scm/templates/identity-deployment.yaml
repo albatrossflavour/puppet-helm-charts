@@ -18,7 +18,9 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       {{- include "scm.podCommon" . | nindent 6 }}
-      {{- include "scm.scheduling" .Values.identity | nindent 6 }}
+      {{- with (include "scm.scheduling" .Values.identity) }}
+      {{- . | nindent 6 }}
+      {{- end }}
       initContainers:
         # Fills the client secrets into the realm import. complyadm renders the
         # same file from templates/identity/puppet-realm.json.epp.

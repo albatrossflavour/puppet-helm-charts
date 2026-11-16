@@ -19,7 +19,9 @@ spec:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       {{- include "cd4pe.podCommon" . | nindent 6 }}
-      {{- include "cd4pe.scheduling" .Values.postgresql | nindent 6 }}
+      {{- with (include "cd4pe.scheduling" .Values.postgresql) }}
+      {{- . | nindent 6 }}
+      {{- end }}
       containers:
         - name: postgres
           image: {{ include "cd4pe.image" (dict "root" . "image" .Values.postgresql.image) | quote }}

@@ -117,13 +117,13 @@ mounted. enableServiceLinks is false to keep the kubelet's <SERVICE>_PORT
 variables out of containers that read their configuration from the environment.
 */}}
 {{- define "scm.podCommon" -}}
+serviceAccountName: {{ include "scm.serviceAccountName" . }}
+automountServiceAccountToken: false
+enableServiceLinks: false
 {{- with .Values.global.imagePullSecrets }}
 imagePullSecrets:
   {{- toYaml . | nindent 2 }}
 {{- end }}
-serviceAccountName: {{ include "scm.serviceAccountName" . }}
-automountServiceAccountToken: false
-enableServiceLinks: false
 {{- with .Values.podSecurityContext }}
 securityContext:
   {{- toYaml . | nindent 2 }}

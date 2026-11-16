@@ -6,13 +6,13 @@ metadata:
     {{- include "cd4pe.labels" . | nindent 4 }}
 data:
   base.conf.template: |
-    {{- .Files.Get "files/base.conf.template" | nindent 4 }}
+    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/base.conf.template" | nindent 4) "" }}
   log4j2.properties: |
-    {{- .Files.Get "files/log4j2.properties" | nindent 4 }}
+    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/log4j2.properties" | nindent 4) "" }}
   postgresql.conf: |
-    {{- .Files.Get "files/postgresql.conf" | nindent 4 }}
+    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/postgresql.conf" | nindent 4) "" }}
   pg_hba.conf: |
-    {{- .Files.Get "files/pg_hba.conf" | nindent 4 }}
+    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/pg_hba.conf" | nindent 4) "" }}
   # What cd4peadm does with templates/postgres/initdb.sql.epp, as a script so
   # the passwords come from the environment and never sit in a file. The
   # postgres entrypoint sources it once, when the data directory is empty.

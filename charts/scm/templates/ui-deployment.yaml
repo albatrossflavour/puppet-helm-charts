@@ -16,7 +16,9 @@ spec:
         {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 8 }}
     spec:
       {{- include "scm.podCommon" . | nindent 6 }}
-      {{- include "scm.scheduling" .Values.ui | nindent 6 }}
+      {{- with (include "scm.scheduling" .Values.ui) }}
+      {{- . | nindent 6 }}
+      {{- end }}
       initContainers:
         # comply_ui_assessor_init: copies the assessor archives the UI serves to nodes.
         - name: assessor-init
