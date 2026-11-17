@@ -14,9 +14,13 @@ until {{ .Values.hostname }} resolves from inside the cluster.
 PE is not connected: the mTLS proxy is off. See the README for pe.existingSecret
 and mtlsProxy.enabled.
 {{- end }}
-{{- if .Values.keepOnUninstall }}
+{{- $generated := not .Values.auth.existingSecret }}
 
-The Secret and the PVCs are kept on uninstall. Delete them by hand for a clean slate:
+`helm uninstall` leaves the last hook job behind{{ if .Values.keepOnUninstall }}, and keeps the PVCs{{ if $generated }} and the generated Secret{{ end }}{{ end }}.
+For a clean slate afterwards:
 
-  kubectl delete secret,pvc -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl delete pvc,job{{ if $generated }},secret{{ end }} -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+{{- if not $generated }}
+
+The Secret {{ .Values.auth.existingSecret }} is yours and is never touched.
 {{- end }}

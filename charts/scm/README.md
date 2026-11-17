@@ -26,6 +26,8 @@ The hostname has to resolve from inside the cluster as well as from your browser
 
 The nginx, Redis, and Postgres images start as root. The namespace can enforce `baseline` pod security but not `restricted`.
 
+If the namespace restricts egress, `gatekeeper` has to be able to reach the ingress controller on 443, and `scarpy` has to reach the PE primary once PE is connected.
+
 The UI pod copies about 1 GB of CIS-CAT assessor archives into an `emptyDir` on every start, so nodes need that much ephemeral storage.
 
 ## Values
@@ -82,6 +84,20 @@ The Redis image drops to uid 999 but doesn't chown a fresh volume, so the chart 
 - Backup, restore, and the support bundle, which are `complyadm` plans
 - Moving an existing docker install onto the chart
 - Anything proven end to end with PE. Nothing has been scanned through it yet, so the report upload path is untested
+
+## Uninstall
+
+```bash
+helm uninstall scm -n puppet
+```
+
+`keepOnUninstall` defaults to `true`, so that leaves the PVCs and the generated Secret in place. It also leaves the last post-install job behind, which is what Helm does with hooks. For a clean slate:
+
+```bash
+kubectl delete pvc,job,secret -n puppet -l app.kubernetes.io/instance=scm
+```
+
+A Secret you supplied through `auth.existingSecret` doesn't carry that label, so neither command touches it.
 
 ## Upgrades
 

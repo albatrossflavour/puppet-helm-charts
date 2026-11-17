@@ -51,6 +51,7 @@ auth:
   queryDbPassword: ""
 
 # -- Keep the generated Secret and the PVCs when the release is uninstalled.
+# A Secret supplied through auth.existingSecret is never touched either way.
 # The database passwords are fixed in the Postgres volume at first start, so
 # losing the Secret while keeping the volume locks the product out.
 keepOnUninstall: true

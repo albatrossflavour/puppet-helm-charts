@@ -21,6 +21,8 @@ A post-install job sets the root email and password. The password is generated, 
 kubectl get secret cd4pe -n puppet -o jsonpath='{.data.root-password}' | base64 -d
 ```
 
+If you set `auth.existingSecret`, the password is whatever you put in that Secret, and there's no Secret called `cd4pe`.
+
 A cold start takes a few minutes. `pipelinesinfra` restarts until Postgres is up, and `query` isn't Ready until `pipelinesinfra` has written its token.
 
 ## What you need
@@ -30,6 +32,8 @@ An ingress controller, and a default storage class for the database and the back
 `pipelinesinfra` writes a token file that `query` reads, and they're separate pods, so the token volume defaults to `ReadWriteMany`. Set `queryToken.persistence.storageClass` to a class that supports it. If you don't have one, set `queryToken.persistence.accessMode=ReadWriteOnce` and the chart pins `query` to the same node as `pipelinesinfra`.
 
 The `ui`, `pipelinesinfra`, and `postgres` images start as root and write to their root filesystems. The namespace can enforce `baseline` pod security but not `restricted`.
+
+If the namespace restricts egress, `pipelinesinfra` has to be able to reach the PE primary and your VCS.
 
 ## Values
 
@@ -80,6 +84,20 @@ A Service named `<release>-postgres` makes Kubernetes inject `CD4PE_POSTGRES_POR
 - Backup, restore, and the support bundle, which are `cd4peadm` plans
 - External database mode, which `cd4peadm` has had since 5.16.0. The chart always runs the product's own Postgres image
 - Moving an existing docker install onto the chart
+
+## Uninstall
+
+```bash
+helm uninstall cd4pe -n puppet
+```
+
+`keepOnUninstall` defaults to `true`, so that leaves the PVCs and the generated Secret in place. It also leaves the last post-install job behind, which is what Helm does with hooks. For a clean slate:
+
+```bash
+kubectl delete pvc,job,secret -n puppet -l app.kubernetes.io/instance=cd4pe
+```
+
+A Secret you supplied through `auth.existingSecret` doesn't carry that label, so neither command touches it.
 
 ## Upgrades
 
