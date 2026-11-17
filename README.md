@@ -6,7 +6,7 @@ Puppet ships both products as containers run by a Bolt module (`cd4peadm` and `c
 
 | Chart | Product version | Ported from |
 |---|---|---|
-| [`cd4pe`](charts/cd4pe) | 5.18.0 | `cd4peadm` 5.18.0 |
+| [`cd4pe`](charts/cd4pe) | 5.19.0 | `cd4peadm` 5.19.0 |
 | [`scm`](charts/scm) | 3.9.0 | `complyadm` 3.9.0 |
 
 ## Status
