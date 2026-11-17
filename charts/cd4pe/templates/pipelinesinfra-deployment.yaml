@@ -106,6 +106,14 @@ spec:
         - name: heap-dumps
           emptyDir: {}
         - name: licence
+          {{- if .Values.license.existingSecret }}
+          secret:
+            secretName: {{ .Values.license.existingSecret }}
+            items:
+              - key: license.lic
+                path: license.lic
+          {{- else }}
           emptyDir: {}
+          {{- end }}
         - name: logs
           emptyDir: {}

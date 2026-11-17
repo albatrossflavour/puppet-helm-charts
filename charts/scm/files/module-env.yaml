@@ -36,7 +36,6 @@ comply_postgres:
   PGDATA: /bitnami/postgresql/data
 comply_redis: {}
 comply_scarpy:
-  COMPLY_SERVER: '@@HOSTNAME@@'
   DB_USER: comply
   DESIRED_SCAN_ENDPOINT: http://@@FULLNAME@@-scarpy:8088/api/v3/pe/task/ciscatscan/runScheduledScan
   INTROSPECTION_BLOCKED: 'true'

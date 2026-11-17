@@ -74,6 +74,9 @@ spec:
           # From the complyadm 3.9.0 comply_scarpy service in functions/config.pp.
           env:
             {{- include "scm.scarpEnv" . | nindent 12 }}
+            # The host scarpy tells agents to send their scan reports to.
+            - name: COMPLY_SERVER
+              value: {{ .Values.mtlsProxy.hostname | default .Values.hostname | quote }}
             - name: FEATURES
               value: {{ .Values.features | quote }}
             {{- include "scm.secretEnv" (dict "root" . "name" "HASURA_ADMIN_SECRET" "key" "hasura-admin-secret") | nindent 12 }}

@@ -50,6 +50,12 @@ auth:
   # -- Password of the query database role. Generated if empty.
   queryDbPassword: ""
 
+license:
+  # -- Secret holding the CD4PE licence under the key `license.lic`. cd4peadm
+  # copies the same file to /etc/puppetlabs/cd4pe/license on the host. Empty
+  # starts CD4PE with no licence.
+  existingSecret: ""
+
 # -- Keep the generated Secret and the PVCs when the release is uninstalled.
 # A Secret supplied through auth.existingSecret is never touched either way.
 # The database passwords are fixed in the Postgres volume at first start, so

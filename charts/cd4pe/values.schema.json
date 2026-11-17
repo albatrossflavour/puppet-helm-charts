@@ -73,6 +73,14 @@
         }
       }
     },
+    "license": {
+      "type": "object",
+      "properties": {
+        "existingSecret": {
+          "type": "string"
+        }
+      }
+    },
     "keepOnUninstall": {
       "type": "boolean"
     },

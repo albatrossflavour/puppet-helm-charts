@@ -247,7 +247,7 @@ The charts aren't published. There's no packaged chart or Helm repository, so pe
 
 Nothing here migrates data. The report says when a release changed the upgrade plan, and the upgrade test may fail on such a release. Moving a database between Postgres versions is still a runbook someone writes for that release.
 
-Nothing is tested against PE. No pipeline has run through the CD4PE chart and no scan through the SCM chart.
+The automated tests don't touch PE. Both charts have been connected to a PE install by hand, and SCM has run a scan through one, but no pipeline has run through the CD4PE chart. Each chart's README says how far that went.
 
 There are no backups, and no way to move an existing docker install onto a chart.
 

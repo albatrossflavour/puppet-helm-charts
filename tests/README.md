@@ -17,4 +17,4 @@ Set `BASE_CHART_DIR` to another checkout's `charts` directory and each test also
 
 The scripts only ever talk to the `kind-puppet-charts` context, whatever your kubeconfig points at.
 
-Nothing here connects to PE, so pipelines and scans aren't covered.
+Nothing here connects to PE, so pipelines and scans aren't covered. Each chart's README says what has been tried against PE by hand.

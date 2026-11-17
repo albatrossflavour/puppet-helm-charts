@@ -35,6 +35,20 @@ The `ui`, `pipelinesinfra`, and `postgres` images start as root and write to the
 
 If the namespace restricts egress, `pipelinesinfra` has to be able to reach the PE primary and your VCS.
 
+## Licence
+
+Put the licence file in a Secret under the key `license.lic` and name it in `license.existingSecret`:
+
+```bash
+kubectl -n puppet create secret generic cd4pe-licence --from-file=license.lic=./license.lic
+```
+
+`cd4peadm` copies the same file to `/etc/puppetlabs/cd4pe/license` on the host. Without one the backend starts, and logs that the file is missing.
+
+## Connecting PE
+
+Tested against PE 2025.11.3 as far as the integration: CD4PE discovered the primary from a PE login and listed its node groups and environments. No pipeline has run through the chart yet.
+
 ## Values
 
 `values.yaml` documents every value. The ones you're most likely to touch:
@@ -45,6 +59,7 @@ If the namespace restricts egress, `pipelinesinfra` has to be able to reach the 
 | `backendHostname` | none | Webhook and job hardware hostname. Required |
 | `rootUser.email` | none | Root login. Required |
 | `auth.existingSecret` | empty | Use your own Secret for the passwords and keys |
+| `license.existingSecret` | empty | Secret holding `license.lic` |
 | `ingress.className` | empty | Ingress class |
 | `ingress.annotations` | `{}` | Annotations for both Ingress resources |
 | `pipelinesinfra.javaArgs` | `-Xmx1024M -Xms1024M` | JVM heap, the `java_args` setting |
@@ -79,7 +94,6 @@ A Service named `<release>-postgres` makes Kubernetes inject `CD4PE_POSTGRES_POR
 
 ## What it doesn't do
 
-- Licence upload. The backend starts without one and logs that `license.lic` is missing
 - Trusted certificates and `job-certs.pem`, so job hardware hasn't been tested
 - Backup, restore, and the support bundle, which are `cd4peadm` plans
 - External database mode, which `cd4peadm` has had since 5.16.0. The chart always runs the product's own Postgres image

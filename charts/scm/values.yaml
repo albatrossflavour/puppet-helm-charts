@@ -298,8 +298,12 @@ pe:
 
 mtlsProxy:
   # -- Deploy the mTLS proxy PE and its agents report to. Needs pe.existingSecret.
-  # Tested with a stand-in CA, not yet against a PE install.
   enabled: false
+  # -- Hostname agents use to reach the mTLS proxy. Empty uses `hostname`, as
+  # complyadm does. Set it when the proxy has its own address, which is usual
+  # here because an ingress only carries 80 and 443. The PE certificate has to
+  # be issued for this name.
+  hostname: ""
   service:
     # -- Service type for the mTLS port: NodePort or LoadBalancer.
     type: NodePort

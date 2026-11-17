@@ -78,11 +78,11 @@ allow:
     kind: mount-omitted
     name: "${cd4peadm::license_install_dir()}"
     module: "\"${cd4peadm::license_install_dir()}:${cd4peadm::license_install_dir()}\""
-    reason: That function returns /etc/puppetlabs/cd4pe/license, which the chart mounts as an empty directory. There is no licence upload yet.
+    reason: That function returns /etc/puppetlabs/cd4pe/license. The chart mounts the Secret named by license.existingSecret there, or an empty directory.
   - container: pipelinesinfra
     kind: mount-chart-only
     name: "/etc/puppetlabs/cd4pe/license"
-    reason: The licence directory, empty until the chart can load a licence.
+    reason: The licence directory, written as a literal path where the module calls a function.
   - container: pipelinesinfra
     kind: mount-omitted
     name: "${config['db_ca_cert_path']}"

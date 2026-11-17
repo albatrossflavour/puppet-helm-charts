@@ -44,7 +44,8 @@ The UI pod copies about 1 GB of CIS-CAT assessor archives into an `emptyDir` on 
 | `gatekeeper.hostAliases` | `[]` | See above |
 | `frontdoor.keycloakAdminConsole` | `false` | Expose `/auth/admin`, the `admin_console_enabled` setting |
 | `pe.existingSecret` | empty | PE certificate and CA, for connecting PE |
-| `mtlsProxy.enabled` | `false` | The port PE and agents report to |
+| `mtlsProxy.enabled` | `false` | The port agents report to |
+| `mtlsProxy.hostname` | empty | The name agents use for that port, when it isn't `hostname` |
 | `keepOnUninstall` | `true` | Keep the Secret and PVCs on uninstall |
 
 ## Secrets
@@ -59,15 +60,33 @@ The database passwords are set when Postgres first starts and the client secrets
 
 ## Connecting PE
 
-The proxy is tested with a throwaway CA standing in for the PE CA: it starts, refuses a caller with no client certificate, and routes one that has a certificate to `scarpy`. It hasn't been run against a real PE install.
+Tested against PE 2025.11.3. SCM pulled the node inventory from PE, started a CIS scan on a node through the orchestrator, and took the report back through the mTLS proxy.
 
-SCM needs a certificate signed by the PE CA. On the PE primary:
+Agents send their reports to SCM on port 30303, with their own PE certificates. `complyadm` publishes that port on the same host as the UI. An ingress only carries 80 and 443, so on Kubernetes the proxy usually needs its own address. Give it a `LoadBalancer` Service and a DNS name of its own, and tell SCM that name with `mtlsProxy.hostname`:
 
-```bash
-puppetserver ca generate --certname scm.example.com
+```yaml
+pe:
+  existingSecret: scm-pe-certs
+mtlsProxy:
+  enabled: true
+  hostname: scm-agents.example.com
+  service:
+    type: LoadBalancer
 ```
 
-Put the certificate, its key, and the CA certificate in a Secret with the keys `tls.crt`, `tls.key`, and `ca.crt`, then set `pe.existingSecret` and `mtlsProxy.enabled=true`. The proxy is published as a NodePort on 30303 by default, which is the port `complyadm` uses.
+The proxy needs a certificate from the PE CA for the name agents use. On the PE primary:
+
+```bash
+puppetserver ca generate --certname scm-agents.example.com
+```
+
+Put the certificate, its key, and the CA certificate in a Secret with the keys `tls.crt`, `tls.key`, and `ca.crt`. On the primary they're `certs/<certname>.pem`, `private_keys/<certname>.pem`, and `certs/ca.pem` under `/etc/puppetlabs/puppet/ssl`.
+
+Every node that will be scanned has to resolve that name and reach it on 30303, and `scarpy` has to reach the PE primary, so a namespace that restricts traffic needs a rule for each.
+
+Then sign in to SCM, open Settings, and give it the PE primary's hostname and a PE login. The lab test used a PE administrator, because SCM creates its own roles in PE when it connects. A narrower role hasn't been tried.
+
+Leave `mtlsProxy.hostname` empty and SCM tells agents to use `hostname`, which only works if port 30303 is reachable at that name. The Service defaults to a NodePort on 30303.
 
 ## Differences from a complyadm install
 
@@ -83,7 +102,7 @@ The Redis image drops to uid 999 but doesn't chown a fresh volume, so the chart 
 
 - Backup, restore, and the support bundle, which are `complyadm` plans
 - Moving an existing docker install onto the chart
-- Anything proven end to end with PE. Nothing has been scanned through it yet, so the report upload path is untested
+- Scheduled scans, Windows nodes, and exports, which haven't been tried. One ad hoc scan of one Linux node has
 
 ## Uninstall
 

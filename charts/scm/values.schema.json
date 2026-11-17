@@ -448,6 +448,9 @@
         "enabled": {
           "type": "boolean"
         },
+        "hostname": {
+          "type": "string"
+        },
         "service": {
           "type": "object",
           "properties": {
