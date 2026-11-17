@@ -13,4 +13,6 @@ port/diff_snapshots.py port/snapshots/cd4peadm-5.18.0.config.json /tmp/new/cd4pe
 
 `snapshots/` holds the releases the charts were last ported from.
 
+`check-release.sh` puts it together: it asks the Forge for the newest released version of a chart's module, snapshots and diffs it, writes a report, and with `--apply` bumps the chart. The `Check for module releases` workflow runs it daily and opens a pull request.
+
 The diff shows what the module changed. It can't show behaviour that changed inside an image, which is what `tests/` is for.

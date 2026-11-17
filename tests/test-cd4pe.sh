@@ -67,4 +67,21 @@ helm upgrade "$RELEASE" "${REPO_DIR}/charts/cd4pe" -n "$NAMESPACE" -f "$VALUES" 
 pass "helm upgrade left the generated Secret unchanged"
 check_login
 
+# A release that needs a data migration installs cleanly from scratch and only
+# breaks on upgrade. BASE_CHART_DIR points at the charts from the branch this
+# change is going into, so that path gets tested too.
+if [[ -n "${BASE_CHART_DIR:-}" ]]; then
+  log "Upgrade from the base branch's chart"
+  reset_release "$RELEASE"
+  helm install "$RELEASE" "${BASE_CHART_DIR}/cd4pe" -n "$NAMESPACE" -f "$VALUES" \
+    --wait --timeout "$INSTALL_TIMEOUT" >/dev/null
+  check_login
+  before="$(secret_checksum "$RELEASE")"
+  helm upgrade "$RELEASE" "${REPO_DIR}/charts/cd4pe" -n "$NAMESPACE" -f "$VALUES" \
+    --wait --timeout "$INSTALL_TIMEOUT" >/dev/null
+  [[ "$(secret_checksum "$RELEASE")" == "$before" ]] || fail "the generated Secret changed on upgrade from the base chart"
+  pass "upgrade from the base branch's chart reached deployed"
+  check_login
+fi
+
 log "cd4pe: all checks passed"

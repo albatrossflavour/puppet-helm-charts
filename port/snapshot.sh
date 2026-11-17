@@ -41,7 +41,7 @@ config_ok=""
 for fixture in "$here"/fixtures/"${module}"*.yaml; do
   cp "$fixture" "$proj/data/common.yaml"
   # The modules read data/common.yaml relative to the working directory.
-  if (cd "$proj" && BOLT_GEM=true bolt plan run "snapshot::${module}" --project "$proj" --format json \
+  if (cd "$proj" && BOLT_GEM=true ${BOLT:-bolt} plan run "snapshot::${module}" --project "$proj" --format json \
       > "$proj/config.json" 2> "$proj/bolt.err"); then
     config_ok="$(basename "$fixture")"
     break

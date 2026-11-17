@@ -1,0 +1,128 @@
+name: Check for module releases
+
+# Once a day, ask the Forge whether cd4peadm or complyadm has a newer release
+# than the one each chart was ported from. If one has, snapshot it, diff it
+# against the baseline in port/snapshots, bump the chart on a branch, and open
+# a pull request with the report. The install and login tests then run on that
+# branch.
+on:
+  schedule:
+    - cron: "17 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+env:
+  # The private Bolt, from Puppet's own gem source. It takes the Forge key.
+  BOLT_VERSION: "5.2.0"
+
+jobs:
+  check:
+    name: ${{ matrix.chart }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        chart: [cd4pe, scm]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+
+      - name: Install Bolt
+        env:
+          FORGE_TOKEN: ${{ secrets.FORGE_TOKEN }}
+        run: |
+          gem install bolt -v "$BOLT_VERSION" --no-document --clear-sources \
+            --source "https://forge-key:${FORGE_TOKEN}@rubygems-puppetcore.puppet.com" \
+            --source https://rubygems.org
+          bolt --version
+
+      - name: Check for a newer release
+        id: check
+        env:
+          FORGE_TOKEN: ${{ secrets.FORGE_TOKEN }}
+          REPORT_DIR: ${{ runner.temp }}/port
+        run: port/check-release.sh "${{ matrix.chart }}" --apply
+
+      - name: Report
+        env:
+          STATUS: ${{ steps.check.outputs.status }}
+          MODULE: ${{ steps.check.outputs.module }}
+          FROM: ${{ steps.check.outputs.from }}
+          TO: ${{ steps.check.outputs.to }}
+          REPORT: ${{ runner.temp }}/port/${{ matrix.chart }}.md
+        run: |
+          {
+            echo "### ${{ matrix.chart }}: ${STATUS}"
+            echo
+            echo "${MODULE} ${FROM}, newest release ${TO}"
+            echo
+            if [[ -f "$REPORT" ]]; then cat "$REPORT"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open a pull request
+        if: steps.check.outputs.status == 'version-only' || steps.check.outputs.status == 'drift'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS: ${{ steps.check.outputs.status }}
+          MODULE: ${{ steps.check.outputs.module }}
+          TO: ${{ steps.check.outputs.to }}
+          REPORT: ${{ runner.temp }}/port/${{ matrix.chart }}.md
+        run: |
+          branch="port/${MODULE}-${TO}"
+          title="Port ${{ matrix.chart }} to ${MODULE} ${TO}"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "Branch ${branch} already exists, so this release has been picked up before."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add -A
+          git commit -m "$title"
+          git push origin "$branch"
+
+          # GitHub caps a description at 65536 characters.
+          head -c 60000 "$REPORT" > body.md
+          draft=()
+          if [[ "$STATUS" == "drift" ]]; then draft=(--draft); fi
+          if ! gh pr create --base main --head "$branch" --title "$title" --body-file body.md "${draft[@]}"; then
+            # The repository setting that lets Actions open pull requests is
+            # off. The branch is pushed, so say where it is.
+            {
+              echo "The branch \`${branch}\` is pushed, but Actions is not allowed to open pull requests in this repository."
+              echo "Open one from https://github.com/${{ github.repository }}/compare/main...${branch}"
+              echo
+              cat body.md
+            } > issue.md
+            gh issue create --title "$title" --body-file issue.md
+          fi
+
+          # A push made with the workflow's own token does not start other
+          # workflows, so start the checks on the branch by hand.
+          gh workflow run lint.yaml --ref "$branch"
+          gh workflow run e2e.yaml --ref "$branch"
+
+      - name: Open an issue for a settings schema change
+        if: steps.check.outputs.status == 'schema-change'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODULE: ${{ steps.check.outputs.module }}
+          TO: ${{ steps.check.outputs.to }}
+          REPORT: ${{ runner.temp }}/port/${{ matrix.chart }}.md
+        run: |
+          title="${MODULE} ${TO} needs a new fixture"
+          if [[ -n "$(gh issue list --state open --search "\"${title}\" in:title" --json number --jq '.[].number')" ]]; then
+            echo "An issue for this is already open."
+            exit 0
+          fi
+          gh issue create --title "$title" --body-file "$REPORT"

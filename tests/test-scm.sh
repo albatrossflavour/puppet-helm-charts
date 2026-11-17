@@ -19,8 +19,9 @@ trap 'rm -rf "$WORK"' EXIT
 ingress_ip="$(kubectl -n ingress-nginx get service ingress-nginx-controller -o jsonpath='{.spec.clusterIP}')"
 host_aliases="[{\"ip\":\"${ingress_ip}\",\"hostnames\":[\"${HOST}\"]}]"
 
+# install_or_upgrade <install|upgrade> [chart dir]
 install_or_upgrade() {
-  helm "$1" "$RELEASE" "${REPO_DIR}/charts/scm" -n "$NAMESPACE" -f "$VALUES" \
+  helm "$1" "$RELEASE" "${2:-${REPO_DIR}/charts/scm}" -n "$NAMESPACE" -f "$VALUES" \
     --set-json "gatekeeper.hostAliases=${host_aliases}" \
     --wait --timeout "$INSTALL_TIMEOUT" >/dev/null
 }
@@ -55,6 +56,28 @@ check_login() {
   pass "the assessor archive downloads"
 }
 
+# Log in with the default credentials and get through the forced password change.
+first_login() {
+  local jar="${WORK}/first.jar" next final
+  open_signin "$jar"
+  pass "the front page redirects to the Keycloak sign-in form"
+
+  next="$(ingress_curl -c "$jar" -b "$jar" -o /dev/null -w '%{redirect_url}' \
+    --data-urlencode 'username=comply' --data-urlencode 'password=compliance' \
+    "$(form_action "${WORK}/signin.html")")"
+  [[ -n "$next" ]] || fail "the default login comply/compliance was not accepted"
+  ingress_curl -c "$jar" -b "$jar" -o "${WORK}/change.html" "$next"
+  grep -q 'name="password-new"' "${WORK}/change.html" || fail "the default login did not force a password change"
+  pass "the default login forces a password change"
+
+  final="$(ingress_curl -L -c "$jar" -b "$jar" -o "${WORK}/home.html" -w '%{url_effective}' \
+    --data-urlencode "password-new=${NEW_PASSWORD}" --data-urlencode "password-confirm=${NEW_PASSWORD}" \
+    "$(form_action "${WORK}/change.html")")"
+  [[ "$final" == "${BASE}/" ]] || fail "after the password change the browser ended at ${final}, not the UI"
+  pass "the password change completes the OAuth round trip to the UI"
+
+}
+
 reset_release "$RELEASE"
 
 log "Installing ${RELEASE}"
@@ -66,23 +89,7 @@ helm test "$RELEASE" -n "$NAMESPACE" --timeout 3m >/dev/null
 pass "helm test"
 
 log "First login and forced password change"
-jar="${WORK}/first.jar"
-open_signin "$jar"
-pass "the front page redirects to the Keycloak sign-in form"
-
-next="$(ingress_curl -c "$jar" -b "$jar" -o /dev/null -w '%{redirect_url}' \
-  --data-urlencode 'username=comply' --data-urlencode 'password=compliance' \
-  "$(form_action "${WORK}/signin.html")")"
-[[ -n "$next" ]] || fail "the default login comply/compliance was not accepted"
-ingress_curl -c "$jar" -b "$jar" -o "${WORK}/change.html" "$next"
-grep -q 'name="password-new"' "${WORK}/change.html" || fail "the default login did not force a password change"
-pass "the default login forces a password change"
-
-final="$(ingress_curl -L -c "$jar" -b "$jar" -o "${WORK}/home.html" -w '%{url_effective}' \
-  --data-urlencode "password-new=${NEW_PASSWORD}" --data-urlencode "password-confirm=${NEW_PASSWORD}" \
-  "$(form_action "${WORK}/change.html")")"
-[[ "$final" == "${BASE}/" ]] || fail "after the password change the browser ended at ${final}, not the UI"
-pass "the password change completes the OAuth round trip to the UI"
+first_login
 
 code="$(ingress_curl -o /dev/null -w '%{http_code}' "${BASE}/auth/admin/")"
 [[ "$code" == 403 ]] || fail "the Keycloak admin console returned ${code}, expected 403"
@@ -97,5 +104,20 @@ install_or_upgrade upgrade
 [[ "$(secret_checksum "$RELEASE")" == "$before" ]] || fail "the generated Secret changed on upgrade"
 pass "helm upgrade left the generated Secret unchanged"
 check_login
+
+# A release that needs a data migration installs cleanly from scratch and only
+# breaks on upgrade. BASE_CHART_DIR points at the charts from the branch this
+# change is going into, so that path gets tested too.
+if [[ -n "${BASE_CHART_DIR:-}" ]]; then
+  log "Upgrade from the base branch's chart"
+  reset_release "$RELEASE"
+  install_or_upgrade install "${BASE_CHART_DIR}/scm"
+  first_login
+  before="$(secret_checksum "$RELEASE")"
+  install_or_upgrade upgrade
+  [[ "$(secret_checksum "$RELEASE")" == "$before" ]] || fail "the generated Secret changed on upgrade from the base chart"
+  pass "upgrade from the base branch's chart reached deployed"
+  check_login
+fi
 
 log "scm: all checks passed"

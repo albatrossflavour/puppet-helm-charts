@@ -27,7 +27,7 @@ jobs:
   e2e:
     name: ${{ matrix.chart }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -42,7 +42,17 @@ jobs:
         run: df -h / | tail -1
       - uses: azure/setup-helm@v4
       # ubuntu-latest ships docker, kubectl and kind.
+      # Off main, also test the upgrade from the charts on main, which is what
+      # someone already running the chart would go through.
+      - name: Check out the charts on main
+        if: github.ref != 'refs/heads/main'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: base
       - name: Create the kind cluster
         run: tests/setup-cluster.sh
       - name: Install ${{ matrix.chart }} and log in
+        env:
+          BASE_CHART_DIR: ${{ github.ref != 'refs/heads/main' && format('{0}/base/charts', github.workspace) || '' }}
         run: tests/test-${{ matrix.chart }}.sh
