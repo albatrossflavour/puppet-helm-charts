@@ -83,3 +83,36 @@ allow:
     kind: command
     module: "sh -c 'rm -f /Assessor-CLI/.scarp-init-complete; i=0; until [ -f /Assessor-CLI/.copy-complete ] || [ $i -ge 60 ]; do sleep 1; i=$((i+1)); done; [ -f /Assessor-CLI/.copy-complete ] || { echo \"timed out waiting for /Assessor-CLI/.copy-complete\" >&2; exit 1; }; scarp init /Assessor-CLI/benchmarks && scarp upgrade-assessor && touch /Assessor-CLI/.scarp-init-complete'"
     reason: complyadm polls for a sentinel file because systemd ordering does not wait. initContainers run in order, so the polling is gone.
+  - container: comply_frontdoor
+    kind: mount-omitted
+    name: "/certs"
+    module: "\"${installation_dir}/comply_certs:/certs\""
+    reason: The frontdoor certificate. The ingress controller terminates TLS.
+  - container: comply_frontdoor
+    kind: mount-omitted
+    name: "/health/nginx_healthcheck.sh"
+    module: "\"${installation_dir}/nginx_healthcheck.sh:/health/nginx_healthcheck.sh\""
+    reason: complyadm's watchdog script. The chart's probes ask nginx's health port directly.
+  - container: comply_frontdoor
+    kind: port-omitted
+    name: "8443"
+    module: "8443"
+    reason: The TLS listener. Frontdoor serves plain HTTP on 8080 behind the ingress.
+  - container: comply_gatekeeper
+    kind: mount-omitted
+    name: "/run/secrets/oauth2_proxy.cfg"
+    module: "\"${conf_file}:/run/secrets/oauth2_proxy.cfg\""
+    reason: The config has no secrets in it here, so it is mounted from a ConfigMap at /etc/oauth2-proxy.
+  - container: comply_gatekeeper
+    kind: mount-chart-only
+    name: "/etc/oauth2-proxy/oauth2_proxy.cfg"
+    reason: Where the chart mounts the oauth2-proxy config.
+  - container: comply_postgres
+    kind: mount-omitted
+    name: "/docker-entrypoint-initdb.d/initdb.sql"
+    module: "\"${init_script}:/docker-entrypoint-initdb.d/initdb.sql\""
+    reason: Replaced by an init script that reads the passwords from the environment, so they are not in a file.
+  - container: comply_postgres
+    kind: mount-chart-only
+    name: "/docker-entrypoint-initdb.d/10-scm-init.sh"
+    reason: The init script that replaces complyadm's initdb.sql.

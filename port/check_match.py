@@ -14,9 +14,9 @@ module release changes that value, the allowance stops matching and the
 difference is reported again, so a decision made about one release is never
 silently carried to the next.
 
-It checks images, environment variable names and values, and commands. It does
-not check mounts, ports, or the contents of config files: port/generate_files.py
-covers the config files, and the snapshot diff reports the rest.
+It checks images, environment variable names and values, commands, the paths
+mounted into each container, and the ports the module publishes. It does not
+check the contents of config files, which port/generate_files.py generates.
 """
 import json
 import os
@@ -61,6 +61,88 @@ def parse_env_list(items):
     return env
 
 
+def split_mount(item):
+    """Split "source:destination[:options]" on colons outside ${...}, so a::b() in a source survives."""
+    item = item.strip()
+    if len(item) >= 2 and item[0] == item[-1] and item[0] in "'\"":
+        item = item[1:-1]
+    parts, depth, current = [], 0, ""
+    for index, char in enumerate(item):
+        if item.startswith("${", index):
+            depth += 1
+        elif char == "}" and depth:
+            depth -= 1
+        if char == ":" and depth == 0:
+            parts.append(current)
+            current = ""
+        else:
+            current += char
+    return parts + [current]
+
+
+def resolve(text, variables, service_config):
+    """Fill ${name} from the manifest's own variables, and ${config['name']} from the snapshot."""
+    for _ in range(6):
+        before = text
+        text = re.sub(
+            r"\$\{(\w+)\}",
+            lambda m: variables[m.group(1)].strip("'\"") if m.group(1) in variables
+            else text_of(service_config[m.group(1)]) if m.group(1) in service_config else m.group(0),
+            text,
+        )
+        text = re.sub(
+            r"\$\{config\['(\w+)'\]\}",
+            lambda m: text_of(service_config[m.group(1)]) if service_config.get(m.group(1)) is not None else m.group(0),
+            text,
+        )
+        if text == before:
+            break
+    return text
+
+
+def run_resource(component):
+    for title, attrs in component["resources"].items():
+        if "::runtime::run[" in title:
+            return attrs
+    return {}
+
+
+def expand(items, lists):
+    """A volumes or ports attribute as a flat list. "$name" pulls in every list assigned to that variable."""
+    if items is None:
+        return []
+    if isinstance(items, str):
+        items = [items]
+    out = []
+    for item in items:
+        name = item[1:] if item.startswith("$") else None
+        if name and name in lists:
+            for alternative in lists[name]:
+                out += expand(alternative, lists)
+        elif not item.startswith("$"):
+            out.append(item)
+    return out
+
+
+def module_mounts(component, service_config):
+    """{path inside the container: the manifest's own text for that mount}."""
+    mounts = {}
+    for item in expand(run_resource(component).get("volumes"), component.get("lists", {})):
+        parts = split_mount(item)
+        if len(parts) >= 2:
+            mounts[resolve(parts[1], component.get("variables", {}), service_config)] = item
+    return mounts
+
+
+def manifest_ports(component, service_config):
+    """Container-side ports from a manifest's own ports list."""
+    ports = []
+    for item in expand(run_resource(component).get("ports"), component.get("lists", {})):
+        parts = split_mount(item)
+        ports.append(resolve(parts[-1], component.get("variables", {}), service_config))
+    return ports
+
+
 def module_containers(chart, snapshots):
     """{module container name: {image, env, command}} as the module would run them."""
     config, resources, rendered = snapshots
@@ -69,10 +151,14 @@ def module_containers(chart, snapshots):
         for role in config["roles"].values():
             for name, service in role["services"].items():
                 container = service["container"]
+                component = resources["components"].get(name.removeprefix("comply_"), {"resources": {}})
                 out[name] = {
                     "image": container.get("image"),
                     "env": {k: text_of(v) for k, v in (container.get("env_vars") or {}).items()},
                     "command": container.get("cmd"),
+                    "mounts": module_mounts(component, service),
+                    # complyadm keeps published ports in config(), as host:container.
+                    "ports": [str(port).split(":")[-1] for port in container.get("ports") or []],
                 }
         return out
 
@@ -95,6 +181,16 @@ def module_containers(chart, snapshots):
     out["ui"] = {"image": images["teams_ui"], "env": run_env("teams_ui"), "command": None,
                  "config": config["roles"]["ui"]["services"]["ui"]}
     out["postgres"] = {"image": images["postgres"], "env": run_env("postgres"), "command": None}
+    services = {
+        "pipelinesinfra": ("pipelinesinfra", backend["pipelinesinfra"]),
+        "query": ("query", backend["query"]),
+        "ui": ("teams_ui", config["roles"]["ui"]["services"]["ui"]),
+        "postgres": ("postgres", config["roles"]["database"]["services"]["postgres"]),
+    }
+    for name, (component_name, service) in services.items():
+        component = components[component_name]
+        out[name]["mounts"] = module_mounts(component, service)
+        out[name]["ports"] = manifest_ports(component, service)
     return out
 
 
@@ -119,6 +215,8 @@ def chart_containers(chart):
                 "image": container["image"],
                 "env": env,
                 "command": container.get("command", []) + container.get("args", []),
+                "mounts": [mount["mountPath"] for mount in container.get("volumeMounts", [])],
+                "ports": [str(port["containerPort"]) for port in container.get("ports", [])],
             }
     return out
 
@@ -233,6 +331,24 @@ def main():
         for env_name in sorted(set(ours["env"]) - set(theirs["env"])):
             if not allow(name, "env-chart-only", env_name, None):
                 problems.append(f"{name}: the chart sets {env_name} and the module does not")
+
+        # A module mount is covered if the chart mounts that path or a directory above it.
+        def covered(path):
+            return any(path == ours_path or path.startswith(ours_path.rstrip("/") + "/") for ours_path in ours["mounts"])
+
+        for path in sorted(theirs["mounts"]):
+            if not covered(path) and not allow(name, "mount-omitted", path, theirs["mounts"][path]):
+                problems.append(f"{name}: the module mounts {path} ({theirs['mounts'][path]}) and the chart does not")
+        for path in sorted(ours["mounts"]):
+            wanted = any(path == their_path or their_path.startswith(path.rstrip("/") + "/") for their_path in theirs["mounts"])
+            if not wanted and not allow(name, "mount-chart-only", path, None):
+                problems.append(f"{name}: the chart mounts {path} and the module does not")
+
+        # Only one direction: the chart names every port it listens on for its
+        # Services and probes, and the modules only list the ones they publish.
+        for port in sorted(set(theirs["ports"]) - set(ours["ports"])):
+            if not allow(name, "port-omitted", port, port):
+                problems.append(f"{name}: the module publishes container port {port} and the chart does not declare it")
 
         if theirs["command"] is not None:
             # The module writes a command as one shell-quoted string, the chart as a list.

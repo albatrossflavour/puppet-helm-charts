@@ -20,13 +20,34 @@ def source_of(expr, text)
 end
 
 # The source text of an attribute value. A literal list becomes a list of its
-# items, so a change to one mount or port shows up as that one item.
+# items, so a change to one mount or port shows up as that one item. A list
+# built by adding lists together is flattened, and a variable in it is kept as
+# "$name" so the reader can look the variable up.
 def value_of(expr, text)
-  if expr.is_a?(Puppet::Pops::Model::LiteralList)
+  case expr
+  when Puppet::Pops::Model::LiteralList
     expr.values.map { |item| source_of(item, text) }
+  when Puppet::Pops::Model::ArithmeticExpression
+    [value_of(expr.left_expr, text), value_of(expr.right_expr, text)].flatten
+  when Puppet::Pops::Model::VariableExpression
+    "$#{source_of(expr.expr, text)}"
   else
     source_of(expr, text)
   end
+end
+
+# Every list a manifest assigns to a variable, such as $volumes. A variable set
+# in both branches of a condition gets one entry per assignment.
+def list_assignments(program, text)
+  found = Hash.new { |hash, key| hash[key] = [] }
+  program._pcore_all_contents([]) do |node|
+    next unless node.is_a?(Puppet::Pops::Model::AssignmentExpression)
+    next unless node.left_expr.is_a?(Puppet::Pops::Model::VariableExpression)
+
+    value = value_of(node.right_expr, text)
+    found[source_of(node.left_expr.expr, text)] << value if value.is_a?(Array)
+  end
+  found.sort.to_h
 end
 
 def resources_in(program, text)
@@ -54,10 +75,13 @@ parser = Puppet::Pops::Parser::EvaluatingParser.new
 out = {}
 Dir.glob(File.join(module_dir, 'manifests', 'component', '*.pp')).sort.each do |path|
   text = File.read(path)
-  found = resources_in(parser.parse_string(text, path), text)
+  program = parser.parse_string(text, path)
+  found = resources_in(program, text)
   # Variable assignments carry the paths and commands the resources refer to.
   variables = text.scan(/^\s*\$(\w+)\s*=\s*(['"][^'"\n]*['"])\s*$/).to_h
-  out[File.basename(path, '.pp')] = { 'variables' => variables.sort.to_h, 'resources' => found }
+  out[File.basename(path, '.pp')] = {
+    'variables' => variables.sort.to_h, 'lists' => list_assignments(program, text), 'resources' => found
+  }
 end
 # A checksum of every template and static file. A template whose body changed
 # but whose parameters did not would otherwise go unnoticed. The upgrade plans

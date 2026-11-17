@@ -2,6 +2,14 @@
   "components": {
     "assessor_upgrade": {
       "variables": {},
+      "lists": {
+        "env_vars": [
+          [
+            "$container['env_vars']",
+            ".keys"
+          ]
+        ]
+      },
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
           "after": "$container['after']",
@@ -43,6 +51,7 @@
         "crl": "\"${installation_dir}/comply_certs/crl.pem\"",
         "private_key": "\"${installation_dir}/comply_certs/private_key.pem\""
       },
+      "lists": {},
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
           "after": "$container['after']",
@@ -113,6 +122,17 @@
       "variables": {
         "conf_file": "\"${installation_dir}/oauth2_proxy.cfg\""
       },
+      "lists": {
+        "require": [
+          []
+        ],
+        "volumes": [
+          [],
+          [
+            "\"${conf_file}:/run/secrets/oauth2_proxy.cfg\""
+          ]
+        ]
+      },
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
           "after": "$container['after']",
@@ -147,6 +167,14 @@
       "variables": {
         "before_start": "''",
         "graphql_env": "\"${installation_dir}/graphql.env\""
+      },
+      "lists": {
+        "env_vars": [
+          [
+            "$container['env_vars']",
+            ".keys"
+          ]
+        ]
       },
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
@@ -193,6 +221,14 @@
     },
     "graphql_init": {
       "variables": {},
+      "lists": {
+        "env_vars": [
+          [
+            "$container['env_vars']",
+            ".keys"
+          ]
+        ]
+      },
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
           "after": "$container['after']",
@@ -230,6 +266,34 @@
         "ca_cert_identity": "\"${installation_dir}/pe_certs/.ca.crt.identity\"",
         "identity_env": "\"${installation_dir}/identity.env\"",
         "keycloak_import": "\"${installation_dir}/Puppet-realm.json\""
+      },
+      "lists": {
+        "env_vars": [
+          [
+            "$container['env_vars']",
+            ".keys"
+          ]
+        ],
+        "require": [
+          [
+            "File[$identity_env]"
+          ],
+          [
+            "File[$keycloak_import]",
+            "File[$identity_env]"
+          ]
+        ],
+        "volumes": [
+          [
+            "\"${installation_dir}/pe_certs:/certs\"",
+            "\"${installation_dir}/comply_certs/cert_chain.pem:/certs/cert_chain.pem\""
+          ],
+          [
+            "\"${keycloak_import}:/opt/keycloak/data/import/Puppet-realm.json\"",
+            "\"${installation_dir}/comply/pe_certs:/certs\"",
+            "\"${installation_dir}/comply/comply_certs/cert_chain.pem:/certs/cert_chain.pem\""
+          ]
+        ]
       },
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
@@ -297,6 +361,7 @@
         "tls_crt": "\"${installation_dir}/pe_certs/tls.crt\"",
         "tls_key": "\"${installation_dir}/pe_certs/tls.key\""
       },
+      "lists": {},
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
           "after": "$container['after']",
@@ -370,6 +435,40 @@
         "pgdata": "\"${postgres_dir}/data\"",
         "postgres_dir": "'/bitnami/postgresql'",
         "postgres_env": "\"${installation_dir}/postgres.env\""
+      },
+      "lists": {
+        "env_vars": [
+          [
+            "$container['env_vars']",
+            ".keys"
+          ]
+        ],
+        "require": [
+          [
+            "File[$conf_file]",
+            "File[$postgres_env]",
+            "File[$hba_file]"
+          ],
+          [
+            "File[$init_script]",
+            "File[$conf_file]",
+            "File[$postgres_env]",
+            "File[$hba_file]"
+          ]
+        ],
+        "volumes": [
+          [
+            "\"postgres:${postgres_dir}\"",
+            "\"${conf_file}:${pgconf}/postgresql.conf\"",
+            "\"${hba_file}:${pgconf}/pg_hba.conf\""
+          ],
+          [
+            "\"postgres:${postgres_dir}\"",
+            "\"${init_script}:/docker-entrypoint-initdb.d/initdb.sql\"",
+            "\"${conf_file}:${pgconf}/postgresql.conf\"",
+            "\"${hba_file}:${pgconf}/pg_hba.conf\""
+          ]
+        ]
       },
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
@@ -471,6 +570,14 @@
         "redis_conf": "\"${installation_dir}/redis.conf\"",
         "redis_env": "\"${installation_dir}/redis.env\""
       },
+      "lists": {
+        "env_vars": [
+          [
+            "$container['env_vars']",
+            ".keys"
+          ]
+        ]
+      },
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
           "before_start": "$before_start",
@@ -540,6 +647,14 @@
         "ca_cert_scarpy": "\"${installation_dir}/.ca.crt.scarpy\"",
         "scarpy_env": "\"${installation_dir}/scarpy.env\""
       },
+      "lists": {
+        "env_vars": [
+          [
+            "$container['env_vars']",
+            ".keys"
+          ]
+        ]
+      },
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
           "after": "$container['after']",
@@ -587,6 +702,7 @@
     },
     "scarpy_assessor_init": {
       "variables": {},
+      "lists": {},
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
           "after": "$container['after']",
@@ -629,6 +745,14 @@
     },
     "scarpy_init": {
       "variables": {},
+      "lists": {
+        "env_vars": [
+          [
+            "$container['env_vars']",
+            ".keys"
+          ]
+        ]
+      },
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
           "after": "$container['after']",
@@ -671,6 +795,7 @@
       "variables": {
         "ui_env": "\"${installation_dir}/ui.env\""
       },
+      "lists": {},
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
           "after": "$container['after']",
@@ -706,6 +831,7 @@
     },
     "ui_assessor_init": {
       "variables": {},
+      "lists": {},
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
           "after": "$container['after']",

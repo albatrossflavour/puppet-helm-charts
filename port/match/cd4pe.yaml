@@ -59,3 +59,61 @@ allow:
     name: LOG_TO_FILE
     module: "true"
     reason: Logs go to stdout for kubectl logs.
+  - container: pipelinesinfra
+    kind: mount-omitted
+    name: "${cd4peadm::license_install_dir()}"
+    module: "\"${cd4peadm::license_install_dir()}:${cd4peadm::license_install_dir()}\""
+    reason: That function returns /etc/puppetlabs/cd4pe/license, which the chart mounts as an empty directory. There is no licence upload yet.
+  - container: pipelinesinfra
+    kind: mount-chart-only
+    name: "/etc/puppetlabs/cd4pe/license"
+    reason: The licence directory, empty until the chart can load a licence.
+  - container: pipelinesinfra
+    kind: mount-omitted
+    name: "${config['db_ca_cert_path']}"
+    module: "\"${cd4peadm::external_db_ca_path()}:${config['db_ca_cert_path']}\""
+    reason: The CA for an external database. The chart always runs the product's own Postgres.
+  - container: pipelinesinfra
+    kind: mount-omitted
+    name: "/etc/nginx/certs"
+    module: "'/etc/puppetlabs/cd4pe/browser_certs:/etc/nginx/certs'"
+    reason: The browser certificate, for TLS on webhooks. The ingress controller terminates TLS.
+  - container: pipelinesinfra
+    kind: mount-omitted
+    name: "/etc/puppetlabs/cd4pe/job-certs.pem"
+    module: "'/etc/puppetlabs/cd4pe/job-certs.pem:/etc/puppetlabs/cd4pe/job-certs.pem'"
+    reason: Not carried over yet. Job hardware is untested.
+  - container: pipelinesinfra
+    kind: mount-omitted
+    name: "/opt/pfi/trust/trusted_certs"
+    module: "\"${cd4peadm::trusted_certs_install_dir()}:/opt/pfi/trust/trusted_certs\""
+    reason: Not carried over yet. There is no way to supply trusted certificates.
+  - container: postgres
+    kind: mount-omitted
+    name: "/docker-entrypoint-initdb.d/initdb.sql"
+    module: "\"${init_script}:/docker-entrypoint-initdb.d/initdb.sql\""
+    reason: Replaced by an init script that reads the passwords from the environment, so they are not in a file.
+  - container: postgres
+    kind: mount-chart-only
+    name: "/docker-entrypoint-initdb.d/10-cd4pe-init.sh"
+    reason: The init script that replaces cd4peadm's initdb.sql.
+  - container: postgres
+    kind: mount-omitted
+    name: "/var/log/postgresql"
+    module: "\"${container['log_volume_name']}:${log_directory}\""
+    reason: The logging collector is off, so there are no log files to keep.
+  - container: query
+    kind: mount-omitted
+    name: "${config['db_ca_cert_path']}"
+    module: "\"${cd4peadm::external_db_ca_path()}:${config['db_ca_cert_path']}\""
+    reason: The CA for an external database. The chart always runs the product's own Postgres.
+  - container: ui
+    kind: mount-omitted
+    name: "/etc/nginx/certs"
+    module: "'/etc/puppetlabs/cd4pe/browser_certs:/etc/nginx/certs'"
+    reason: The browser certificate. The ingress controller terminates TLS.
+  - container: ui
+    kind: port-omitted
+    name: "8000"
+    module: "8000"
+    reason: The webhook server block is removed from the UI's nginx. The backend ingress goes straight to pipelinesinfra.

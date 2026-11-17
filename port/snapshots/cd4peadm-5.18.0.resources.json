@@ -8,6 +8,14 @@
         "log4j_target_path": "'/opt/pfi/log4j2.properties'",
         "log_target_path": "'/app/logs'"
       },
+      "lists": {
+        "db_ca_volumes": [
+          [
+            "\"${cd4peadm::external_db_ca_path()}:${config['db_ca_cert_path']}\""
+          ],
+          []
+        ]
+      },
       "resources": {
         "cd4peadm::runtime::run[$container['name']]": {
           "env_file": [
@@ -22,7 +30,19 @@
           "pull_on_start": "false",
           "require": "Cd4peadm::Runtime::Volume['cd4pe-query-service-token']",
           "runtime": "$config['runtime']",
-          "volumes": "+"
+          "volumes": [
+            "'cd4pe-disk-storage:/disk'",
+            "'cd4pe-query-service-token:/etc/puppetlabs/cd4pe/query-service'",
+            "\"${container['log_volume_name']}:${log_target_path}\"",
+            "'/etc/puppetlabs/cd4pe/pfi-config.json:/etc/cd4pe/pfi-config.json'",
+            "\"${log4j_src_path}:${log4j_target_path}\"",
+            "\"${cd4peadm::license_install_dir()}:${cd4peadm::license_install_dir()}\"",
+            "\"${cd4peadm::trusted_certs_install_dir()}:/opt/pfi/trust/trusted_certs\"",
+            "'/etc/puppetlabs/cd4pe/job-certs.pem:/etc/puppetlabs/cd4pe/job-certs.pem'",
+            "\"cd4pe-heap-dumps:${heap_dump_dir}\"",
+            "'/etc/puppetlabs/cd4pe/browser_certs:/etc/nginx/certs'",
+            "$db_ca_volumes"
+          ]
         },
         "cd4peadm::runtime::volume[$container['log_volume_name']]": {
           "ensure": "present",
@@ -90,6 +110,7 @@
         "postgres_dir": "'/var/lib/postgresql'",
         "repack_script": "'/usr/local/bin/cd-repack.sh'"
       },
+      "lists": {},
       "resources": {
         "cd4peadm::logrotate_config['postgres']": {
           "keep_files": "$config['keep_log_files']",
@@ -166,6 +187,14 @@
     },
     "query": {
       "variables": {},
+      "lists": {
+        "db_ca_volumes": [
+          [
+            "\"${cd4peadm::external_db_ca_path()}:${config['db_ca_cert_path']}\""
+          ],
+          []
+        ]
+      },
       "resources": {
         "cd4peadm::logrotate_config['query']": {
           "keep_files": "$config['keep_log_files']",
@@ -184,7 +213,11 @@
           ],
           "pull_on_start": "false",
           "runtime": "$config['runtime']",
-          "volumes": "+"
+          "volumes": [
+            "\"${container['log_volume_name']}:/app/logs\"",
+            "'cd4pe-query-service-token:/etc/puppetlabs/cd4pe'",
+            "$db_ca_volumes"
+          ]
         },
         "cd4peadm::runtime::volume[$container['log_volume_name']]": {
           "ensure": "present",
@@ -205,6 +238,7 @@
       "variables": {
         "nginx_conf_path": "'/etc/puppetlabs/cd4pe/base.conf.template'"
       },
+      "lists": {},
       "resources": {
         "cd4peadm::logrotate_config['ui']": {
           "keep_files": "$config['keep_log_files']",
