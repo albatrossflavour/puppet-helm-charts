@@ -33,7 +33,7 @@ The product images start as root and write to their own filesystems, so the name
 
 ## How the charts follow product releases
 
-Each chart is a hand-made port of what the Bolt module renders. A new product release means diffing the new module against the old one and carrying the differences across. In the module, the places that matter are `data/images.yaml`, `functions/config.pp`, `templates/`, `manifests/component/`, and `plans/upgrade.pp`.
+Each chart is a hand-made port of what the Bolt module renders, and only of module versions Puppet has released on the Forge. Release candidates and unreleased code aren't ported. A new product release means diffing the new module against the old one and carrying the differences across. In the module, the places that matter are `data/images.yaml`, `functions/config.pp`, `templates/`, `manifests/component/`, and `plans/upgrade.pp`.
 
 Most releases are a version bump. About one release a year per product needs more, usually a base image swap or a database upgrade that needs a dump and restore, and the chart can't do either of those for you.
 
