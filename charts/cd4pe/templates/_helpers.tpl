@@ -152,50 +152,36 @@ helm.sh/resource-policy: keep
 {{- end }}
 
 {{/*
+The environment cd4peadm gives a container, from files/module-env.yaml. That
+file is generated from the module by port/generate_files.py, so a variable a
+module release adds, drops or changes arrives here with no edit. It leaves out
+the variables a template sets itself.
+Usage: include "cd4pe.moduleEnv" (dict "root" . "container" "query")
+*/}}
+{{- define "cd4pe.moduleEnv" -}}
+{{- $all := .root.Files.Get "files/module-env.yaml" | fromYaml -}}
+{{- range $name, $value := (index $all .container) }}
+- name: {{ $name }}
+  value: {{ $value | toString | replace "@@FULLNAME@@" (include "cd4pe.fullname" $.root) | replace "@@HOSTNAME@@" $.root.Values.hostname | replace "@@VERSION@@" $.root.Chart.AppVersion | quote }}
+{{- end }}
+{{- end }}
+
+{{/*
 Environment shared by pipelinesinfra and the root credentials job.
-From cd4peadm 5.18.0 templates/cd4pe_env.epp.
 */}}
 {{- define "cd4pe.backendEnv" -}}
+{{- $_ := required "hostname is required" .Values.hostname -}}
+# cd4peadm publishes the backend as http://<hostname>:8000. Here it has its
+# own hostname behind the ingress.
 - name: CD4PE_BACKEND_SERVICE_ENDPOINT
   value: {{ printf "https://%s" (required "backendHostname is required" .Values.backendHostname) | quote }}
 - name: CD4PE_WEBHOOK_URL
   value: {{ printf "https://%s" .Values.backendHostname | quote }}
-- name: CD4PE_WEB_UI_ENDPOINT
-  value: {{ printf "https://%s" (required "hostname is required" .Values.hostname) | quote }}
-- name: LOG4J_PATH
-  value: /opt/pfi/log4j2.properties
-- name: CD4PE_VERSION
-  value: {{ .Chart.AppVersion | quote }}
-- name: ENABLE_SSL_WEBHOOKS
-  value: "false"
-- name: CD4PE_STAGE
-  value: beta
-- name: CD4PE_STORAGE_PROVIDER
-  value: DISK
-- name: CD4PE_STORAGE_BUCKET
-  value: cd4pe
-- name: CD4PE_ROUTE_PREFIX
-  value: /cd4pe
-- name: CD4PE_SECURE_COOKIE
-  value: "false"
-- name: CD4PE_EULA_ACCEPTED
-  value: "true"
-- name: OTEL_TRACES_EXPORTER
-  value: none
-- name: OTEL_METRICS_EXPORTER
-  value: none
 # Not in cd4peadm. Without it the agent retries a log export to
 # localhost:4318 for ever and fills the pod log.
 - name: OTEL_LOGS_EXPORTER
   value: none
-- name: OTEL_EXPORTER_JAEGER_ENDPOINT
-  value: http://jaeger-aio:14250
-- name: OTEL_EXPORTER_JAEGER_SERVICE_NAME
-  value: cd4pe
-- name: OTEL_RESOURCE_ATTRIBUTES
-  value: service.name=cd4pe,service.version=dev
-- name: CD4PE_QUERY_SERVICE_TOKEN_PATH
-  value: /etc/puppetlabs/cd4pe/query-service/cd4pe-query-service-token
+{{ include "cd4pe.moduleEnv" (dict "root" . "container" "pipelinesinfra") }}
 {{- end }}
 
 {{/*

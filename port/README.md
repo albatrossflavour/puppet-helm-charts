@@ -15,7 +15,9 @@ port/diff_snapshots.py port/snapshots/cd4peadm-5.18.0.config.json /tmp/new/cd4pe
 
 `snapshots/` holds the releases the charts were last ported from.
 
-`generate_files.py` builds each chart's `files/` from the rendered templates, applying the edits that make them fit Kubernetes. Don't edit those files by hand: change the recipe. `check_match.py` compares what the chart renders with what the module would run, container by container, and fails on any difference `match/` doesn't allow. Each allowance records the module value it was written against, so it stops applying when the module changes.
+`generate_files.py` builds each chart's `files/` from the rendered templates, applying the edits that make them fit Kubernetes. Don't edit those files by hand: change the recipe. `generate_files.py` also writes `module-env.yaml`, the environment the module gives each container. The templates read it, so a variable a release adds, drops, or changes reaches the chart without an edit. A template only sets a variable itself when the value is a secret or a chart value, and those are listed as `chart-sets` in `match/`.
+
+`check_match.py` compares what the chart renders with what the module would run, container by container (image, environment, command, mounted paths, and published ports), and fails on any difference `match/` doesn't allow. Each allowance records the module value it was written against, so it stops applying when the module changes.
 
 `check-release.sh` puts it together: it asks the Forge for the newest released version of a chart's module, snapshots and diffs it, writes a report, and with `--apply` bumps the chart. The `Check for module releases` workflow runs it daily and opens a pull request.
 

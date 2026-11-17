@@ -105,6 +105,52 @@ install_or_upgrade upgrade
 pass "helm upgrade left the generated Secret unchanged"
 check_login
 
+# The mTLS proxy is what PE and its agents report to. PE itself is not here,
+# so this stands in a throwaway CA for the PE CA: it proves the proxy starts
+# with real certificates, refuses a caller with no client certificate, and
+# routes a caller that has one through to scarpy.
+log "mTLS proxy"
+mtls="${WORK}/mtls"
+mkdir -p "$mtls"
+openssl req -x509 -newkey rsa:2048 -nodes -days 2 -subj "/CN=Test PE CA" \
+  -keyout "$mtls/ca.key" -out "$mtls/ca.crt" >/dev/null 2>&1
+for name in tls client; do
+  openssl req -newkey rsa:2048 -nodes -subj "/CN=${HOST}" \
+    -keyout "$mtls/$name.key" -out "$mtls/$name.csr" >/dev/null 2>&1
+  openssl x509 -req -in "$mtls/$name.csr" -CA "$mtls/ca.crt" -CAkey "$mtls/ca.key" -CAcreateserial \
+    -days 2 -extfile <(printf 'subjectAltName=DNS:%s' "$HOST") -out "$mtls/$name.crt" >/dev/null 2>&1
+done
+kubectl -n "$NAMESPACE" create secret generic scm-test-pe-certs \
+  --from-file=ca.crt="$mtls/ca.crt" --from-file=tls.crt="$mtls/tls.crt" --from-file=tls.key="$mtls/tls.key" \
+  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+
+helm upgrade "$RELEASE" "${REPO_DIR}/charts/scm" -n "$NAMESPACE" -f "$VALUES" \
+  --set-json "gatekeeper.hostAliases=${host_aliases}" \
+  --set pe.existingSecret=scm-test-pe-certs --set mtlsProxy.enabled=true \
+  --wait --timeout "$INSTALL_TIMEOUT" >/dev/null
+pass "the release upgrades with the mTLS proxy on and the certificates mounted"
+
+mtls_port=13030
+kubectl -n "$NAMESPACE" port-forward "service/${RELEASE}-mtls-proxy" "${mtls_port}:30303" >/dev/null 2>&1 &
+forward_pid=$!
+trap 'kill "$forward_pid" 2>/dev/null || true; rm -rf "$WORK"' EXIT
+for _ in $(seq 1 30); do
+  if curl --silent --max-time 2 --output /dev/null "https://127.0.0.1:${mtls_port}/" --insecure 2>/dev/null; then break; fi
+  sleep 1
+done
+mtls_curl() {
+  curl --silent --max-time 30 --cacert "$mtls/ca.crt" --resolve "${HOST}:${mtls_port}:127.0.0.1" \
+    -o /dev/null -w '%{http_code}' "$@" "https://${HOST}:${mtls_port}/api/v3/core/assessorVersion"
+}
+code="$(mtls_curl || true)"
+[[ "$code" == 400 ]] || fail "a caller with no client certificate got ${code}, expected nginx to refuse it with 400"
+pass "the mTLS proxy refuses a caller with no client certificate"
+code="$(mtls_curl --cert "$mtls/client.crt" --key "$mtls/client.key" || true)"
+[[ "$code" == 200 ]] || fail "a caller with a client certificate got ${code} from the assessor version endpoint, expected 200"
+pass "the mTLS proxy routes a caller with a client certificate to scarpy"
+kill "$forward_pid" 2>/dev/null || true
+check_login
+
 # A release that needs a data migration installs cleanly from scratch and only
 # breaks on upgrade. BASE_CHART_DIR points at the charts from the branch this
 # change is going into, so that path gets tested too.

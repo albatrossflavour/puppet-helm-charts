@@ -72,45 +72,20 @@ spec:
           # KC_TRUSTSTORE_PATHS is left out: complyadm sets it so Keycloak trusts
           # the frontdoor certificate, and here the ingress serves the certificate.
           env:
-            - name: KC_DB
-              value: postgres
-            - name: KC_DB_URL_HOST
-              value: {{ include "scm.fullname" . }}-postgres
-            - name: KC_DB_USERNAME
-              value: keycloak
             {{- include "scm.secretEnv" (dict "root" . "name" "KC_DB_PASSWORD" "key" "keycloak-db-password") | nindent 12 }}
-            - name: COMPLY_DB_CONNECTION
-              value: {{ printf "jdbc:postgresql://%s-postgres/comply?ssl=false" (include "scm.fullname" .) | quote }}
-            - name: COMPLY_DB_USER
-              value: comply
             {{- include "scm.secretEnv" (dict "root" . "name" "COMPLY_DB_PASSWORD" "key" "comply-db-password") | nindent 12 }}
             {{- include "scm.secretEnv" (dict "root" . "name" "DB_ENCRYPTION_KEY" "key" "db-encryption-key") | nindent 12 }}
             {{- include "scm.secretEnv" (dict "root" . "name" "KC_BOOTSTRAP_ADMIN_USERNAME" "key" "keycloak-admin-username") | nindent 12 }}
             {{- include "scm.secretEnv" (dict "root" . "name" "KC_BOOTSTRAP_ADMIN_PASSWORD" "key" "keycloak-admin-password") | nindent 12 }}
-            - name: KC_HOSTNAME
-              value: {{ .Values.hostname | quote }}
-            - name: SIGN_OUT_URL
-              value: {{ printf "https://%s/sign_out" .Values.hostname | quote }}
             - name: KC_LOG_LEVEL
               value: {{ .Values.logLevel | quote }}
-            - name: PROXY_ADDRESS_FORWARDING
-              value: "true"
-            - name: JDBC_PARAMS
-              value: ssl=false
-            - name: KC_HEALTH_ENABLED
-              value: "true"
-            - name: KC_HTTP_ENABLED
-              value: "true"
-            - name: KC_PROXY_HEADERS
-              value: xforwarded
-            - name: KC_HTTP_RELATIVE_PATH
-              value: /auth
-            - name: KC_CACHE
-              value: local
             - name: JAVA_OPTS
               value: {{ .Values.identity.javaOpts | quote }}
             - name: FEATURES
               value: {{ .Values.features | quote }}
+            {{- with (include "scm.moduleEnv" (dict "root" . "container" "comply_identity")) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 8080

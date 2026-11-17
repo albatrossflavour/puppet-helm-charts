@@ -178,8 +178,10 @@ def module_containers(chart, snapshots):
     query_env.update({k: text_of(v) for k, v in backend["query"]["env_vars"].items() if v is not None})
     out["pipelinesinfra"] = {"image": images["pipelinesinfra"], "env": pipelinesinfra_env, "command": None}
     out["query"] = {"image": images["query"], "env": query_env, "command": None}
-    out["ui"] = {"image": images["teams_ui"], "env": run_env("teams_ui"), "command": None,
-                 "config": config["roles"]["ui"]["services"]["ui"]}
+    ui_config = dict(config["roles"]["ui"]["services"]["ui"])
+    # The module passes its own version here. The chart passes its appVersion, which is the same number.
+    ui_config["teams_ui_version"] = "@@VERSION@@"
+    out["ui"] = {"image": images["teams_ui"], "env": run_env("teams_ui"), "command": None, "config": ui_config}
     out["postgres"] = {"image": images["postgres"], "env": run_env("postgres"), "command": None}
     services = {
         "pipelinesinfra": ("pipelinesinfra", backend["pipelinesinfra"]),
@@ -209,6 +211,8 @@ def chart_containers(chart):
         spec = doc["spec"]["template"]["spec"]
         for container in spec.get("initContainers", []) + spec["containers"]:
             env = {}
+            names = [entry["name"] for entry in container.get("env", [])]
+            duplicates = sorted({name for name in names if names.count(name) > 1})
             for entry in container.get("env", []):
                 env[entry["name"]] = SECRET if "valueFrom" in entry else text_of(entry.get("value"))
             out[(component, container["name"])] = {
@@ -217,6 +221,7 @@ def chart_containers(chart):
                 "command": container.get("command", []) + container.get("args", []),
                 "mounts": [mount["mountPath"] for mount in container.get("volumeMounts", [])],
                 "ports": [str(port["containerPort"]) for port in container.get("ports", [])],
+                "duplicates": duplicates,
             }
     return out
 
@@ -227,19 +232,28 @@ CD4PE_PORTS = {"5432": "postgres:5432", "8080": "pipelinesinfra:8080", "8180": "
 HOST_ADDRESS = re.compile(r"(?:@@HOST_IP@@|\$\{facts\['networking'\]\['ip'\]\}):(\d+)")
 
 
-def normalise(chart, value, hostname, app_version, service_config=None):
-    """Rewrite a module value into what the chart should carry for it."""
-    fullname = f"{RELEASE}-{chart}"
+def tokenise(chart, value, service_config=None):
+    """Rewrite a module value into the chart's terms, with placeholders for what the chart fills in.
+
+    @@FULLNAME@@ is the release's resource name prefix, @@HOSTNAME@@ the
+    hostname value and @@VERSION@@ the chart's appVersion.
+    """
     if chart == "scm":
-        value = re.sub(r"comply_(postgres|redis|graphql|identity|scarpy|ui|gatekeeper|frontdoor)\b", rf"{fullname}-\1", value)
-        value = value.replace("scm.fixture.test", hostname)
+        value = re.sub(r"comply_(postgres|redis|graphql|identity|scarpy|ui|gatekeeper|frontdoor)\b", r"@@FULLNAME@@-\1", value)
+        value = value.replace("scm.fixture.test", "@@HOSTNAME@@")
     else:
-        value = HOST_ADDRESS.sub(lambda m: f"{fullname}-{CD4PE_PORTS.get(m.group(1), 'unknown:' + m.group(1))}", value)
-        value = value.replace("@@HOSTNAME@@", hostname).replace("cd4pe.fixture.test", hostname).replace("@@VERSION@@", app_version)
+        value = HOST_ADDRESS.sub(lambda m: f"@@FULLNAME@@-{CD4PE_PORTS.get(m.group(1), 'unknown:' + m.group(1))}", value)
+        value = value.replace("cd4pe.fixture.test", "@@HOSTNAME@@")
         # A manifest refers to a setting as ${config['name']}. Take its value from the snapshot.
         if service_config:
             value = re.sub(r"\$\{config\['(\w+)'\]\}", lambda m: text_of(service_config.get(m.group(1), m.group(0))), value)
     return value
+
+
+def normalise(chart, value, hostname, app_version, service_config=None):
+    """Rewrite a module value into what the chart should render for it."""
+    value = tokenise(chart, value, service_config)
+    return value.replace("@@FULLNAME@@", f"{RELEASE}-{chart}").replace("@@HOSTNAME@@", hostname).replace("@@VERSION@@", app_version)
 
 
 def mask_secrets(value):
@@ -312,6 +326,9 @@ def main():
             problems.append(f"{name}: the chart has no container {key[1]} in workload {key[0]}")
             continue
         ours = chart_side[key]
+
+        for env_name in ours["duplicates"]:
+            problems.append(f"{name}: the chart sets {env_name} more than once")
 
         if theirs["image"] != ours["image"] and not allow(name, "image", "", theirs["image"]):
             problems.append(f"{name}: image is {ours['image']} in the chart, {theirs['image']} in the module")

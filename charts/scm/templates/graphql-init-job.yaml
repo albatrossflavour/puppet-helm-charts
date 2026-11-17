@@ -29,20 +29,13 @@ spec:
           image: {{ include "scm.image" (dict "root" . "image" .Values.graphqlInitJob.image) | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            - name: HASURA_ENDPOINT
-              value: {{ printf "http://%s-graphql:8080" (include "scm.fullname" .) | quote }}
-            - name: POSTGRES_HOSTNAME
-              value: {{ include "scm.fullname" . }}-postgres
             - name: SCARP_DEBUG_LEVEL
               value: {{ .Values.logLevel | quote }}
-            - name: DB_USER
-              value: comply
             {{- include "scm.secretEnv" (dict "root" . "name" "DB_PASSWORD" "key" "comply-db-password") | nindent 12 }}
             {{- include "scm.secretEnv" (dict "root" . "name" "HASURA_ADMIN_SECRET" "key" "hasura-admin-secret") | nindent 12 }}
-            - name: QUERY_API
-              value: {{ printf "http://%s-graphql:8080/v1" (include "scm.fullname" .) | quote }}
-            - name: DESIRED_SCAN_ENDPOINT
-              value: {{ printf "http://%s-scarpy:8088/api/v3/pe/task/ciscatscan/runScheduledScan" (include "scm.fullname" .) | quote }}
+            {{- with (include "scm.moduleEnv" (dict "root" . "container" "comply_graphql_init")) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           {{- with .Values.graphqlInitJob.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

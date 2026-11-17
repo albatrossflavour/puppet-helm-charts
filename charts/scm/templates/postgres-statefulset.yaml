@@ -33,12 +33,13 @@ spec:
             - -c
             - hba_file=/bitnami/postgresql/conf/pg_hba.conf
           env:
-            # complyadm kept the Bitnami path when it moved to the official image.
-            - name: PGDATA
-              value: /bitnami/postgresql/data
             {{- include "scm.secretEnv" (dict "root" . "name" "POSTGRES_PASSWORD" "key" "postgres-password") | nindent 12 }}
+            # Read by the init script that replaces complyadm's initdb.sql.
             {{- include "scm.secretEnv" (dict "root" . "name" "COMPLY_DB_PASSWORD" "key" "comply-db-password") | nindent 12 }}
             {{- include "scm.secretEnv" (dict "root" . "name" "KEYCLOAK_DB_PASSWORD" "key" "keycloak-db-password") | nindent 12 }}
+            {{- with (include "scm.moduleEnv" (dict "root" . "container" "comply_postgres")) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           ports:
             - name: postgres
               containerPort: 5432

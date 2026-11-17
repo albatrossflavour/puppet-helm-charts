@@ -28,6 +28,9 @@ spec:
           env:
             - name: ASSESSOR_VERSION
               value: {{ .Values.assessor.version | quote }}
+            {{- with (include "scm.moduleEnv" (dict "root" . "container" "comply_ui_assessor_init")) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           resources:
             requests:
               cpu: 50m
@@ -47,22 +50,13 @@ spec:
               value: {{ .Chart.AppVersion | quote }}
             - name: ASSESSOR_VERSION
               value: {{ .Values.assessor.version | quote }}
-            - name: QUERY_API
-              value: {{ printf "https://%s:443/v1/graphql" .Values.hostname | quote }}
-            - name: SCARP_API
-              value: {{ printf "https://%s:443/api/" .Values.hostname | quote }}
-            - name: HOST_FQDN
-              value: {{ .Values.hostname | quote }}
-            - name: HTTPS_PORT
-              value: "443"
-            - name: AUTH_PORT
-              value: "443"
             - name: LOGGING
               value: {{ .Values.logLevel | quote }}
             - name: FEATURES
               value: {{ .Values.features | quote }}
-            - name: CHECK_UPDATES
-              value: "false"
+            {{- with (include "scm.moduleEnv" (dict "root" . "container" "comply_ui")) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 3001

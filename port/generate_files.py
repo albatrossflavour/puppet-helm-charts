@@ -18,6 +18,8 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODULES = {"cd4pe": "cd4peadm", "scm": "complyadm"}
 
@@ -216,6 +218,53 @@ RECIPES = {
 }
 
 
+def module_env(chart, version):
+    """The environment each module container gets, minus what the chart's templates set themselves.
+
+    The templates read this file and emit every variable in it, so a variable
+    a module release adds, drops or changes reaches the chart with no edit. A
+    template sets a variable itself when the value is a secret or comes from a
+    chart value: those are listed as chart-sets in port/match/<chart>.yaml.
+    """
+    import yaml
+    from check_match import module_containers, tokenise
+
+    module = MODULES[chart]
+    snapshots = [
+        json.load(open(os.path.join(REPO, "port", "snapshots", f"{module}-{version}.{kind}.json")))
+        for kind in ("config", "resources", "rendered")
+    ]
+    match = yaml.safe_load(open(os.path.join(REPO, "port", "match", f"{chart}.yaml")))
+    omitted = {(a["container"], a["name"]) for a in match.get("allow") or [] if a["kind"] == "env-omitted"}
+    containers = module_containers(chart, snapshots)
+    out = {}
+    for name, target in sorted(match["containers"].items()):
+        if "omitted" in target or name not in containers:
+            continue
+        own = set(target.get("chart-sets") or [])
+        env = {}
+        for env_name, value in sorted(containers[name]["env"].items()):
+            if env_name in own or (name, env_name) in omitted:
+                continue
+            value = tokenise(chart, value, containers[name].get("config"))
+            if re.search(r"fixture-[a-z0-9-]+|\$\{", value):
+                raise RecipeError(
+                    f"{name} {env_name} looks like a secret or an unresolved setting ({value}). "
+                    f"Have the template set it and list it under chart-sets in port/match/{chart}.yaml"
+                )
+            env[env_name] = value
+        out[name] = env
+    text = yaml.safe_dump(out, default_flow_style=False, sort_keys=True, width=1000)
+    return header(
+        f"{module}'s config() and manifests",
+        [],
+        [
+            "The environment each module container gets, minus what the chart's templates set themselves.",
+            "The chart fills in the FULLNAME, HOSTNAME and VERSION placeholders.",
+        ],
+    ) + text
+
+
 def ported_from(chart):
     module = MODULES[chart]
     text = open(os.path.join(REPO, "charts", chart, "Chart.yaml")).read()
@@ -236,11 +285,15 @@ def main():
     rendered = json.load(open(snapshot))
 
     stale = []
-    for name, (source, recipe) in RECIPES[chart].items():
-        if source not in rendered:
-            sys.exit(f"{source} is not in {os.path.basename(snapshot)}: add it to port/render/{module}.yaml")
+    outputs = list(RECIPES[chart].items()) + [("module-env.yaml", (None, None))]
+    for name, (source, recipe) in outputs:
         try:
-            text = recipe(rendered[source])
+            if source is None:
+                text = module_env(chart, version)
+            elif source not in rendered:
+                sys.exit(f"{source} is not in {os.path.basename(snapshot)}: add it to port/render/{module}.yaml")
+            else:
+                text = recipe(rendered[source])
         except RecipeError as error:
             sys.exit(f"charts/{chart}/files/{name}: the recipe no longer fits {module} {version}: {error}")
         path = os.path.join(REPO, "charts", chart, "files", name)
@@ -252,13 +305,13 @@ def main():
             with open(path, "w") as out:
                 out.write(text)
 
-    extra = sorted(set(os.listdir(os.path.join(REPO, "charts", chart, "files"))) - set(RECIPES[chart]))
+    extra = sorted(set(os.listdir(os.path.join(REPO, "charts", chart, "files"))) - set(RECIPES[chart]) - {"module-env.yaml"})
     if extra:
         sys.exit(f"charts/{chart}/files has files no recipe produces: {', '.join(extra)}")
 
     if check and stale:
         sys.exit(f"charts/{chart}/files is out of date for {module} {version}: {', '.join(stale)}. Run port/generate_files.py {chart}")
-    print(f"{chart}: {'checked' if check else 'generated'} {len(RECIPES[chart])} files from {module} {version}"
+    print(f"{chart}: {'checked' if check else 'generated'} {len(outputs)} files from {module} {version}"
           + (f", {len(stale)} changed: {', '.join(stale)}" if stale and not check else ""))
 
 

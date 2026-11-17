@@ -56,6 +56,9 @@ spec:
           env:
             # redis-cli reads this, so the probes need no shell and no password argument.
             {{- include "scm.secretEnv" (dict "root" . "name" "REDISCLI_AUTH" "key" "redis-password") | nindent 12 }}
+            {{- with (include "scm.moduleEnv" (dict "root" . "container" "comply_redis")) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           ports:
             - name: redis
               containerPort: 6379

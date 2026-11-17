@@ -298,7 +298,7 @@ pe:
 
 mtlsProxy:
   # -- Deploy the mTLS proxy PE and its agents report to. Needs pe.existingSecret.
-  # Written from the complyadm template and not yet run against a PE install.
+  # Tested with a stand-in CA, not yet against a PE install.
   enabled: false
   service:
     # -- Service type for the mTLS port: NodePort or LoadBalancer.

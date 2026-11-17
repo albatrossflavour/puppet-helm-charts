@@ -45,27 +45,18 @@ spec:
         - name: query
           image: {{ include "cd4pe.image" (dict "root" . "image" .Values.query.image) | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          # From cd4peadm 5.18.0 templates/query_env.epp.
           env:
-            - name: DB_USER
-              value: query
             - name: DB_PASS
               valueFrom:
                 secretKeyRef:
                   name: {{ include "cd4pe.secretName" . }}
                   key: query-db-password
-            - name: DB_ENDPOINT
-              value: {{ printf "postgres://%s-postgres:5432/query" (include "cd4pe.fullname" .) | quote }}
-            - name: DB_SCHEMA
-              value: estate_reporting
             - name: LOG_LEVEL
               value: {{ .Values.query.logLevel | quote }}
+            # cd4peadm has it log to a file. Here logs go to stdout.
             - name: LOG_TO_FILE
               value: "false"
-            - name: WORKSPACE_URL
-              value: {{ printf "http://%s-pipelinesinfra:8080/api/v1" (include "cd4pe.fullname" .) | quote }}
-            - name: CD4PE_QUERY_SERVICE_TOKEN_SECRET_NAME
-              value: /etc/puppetlabs/cd4pe/cd4pe-query-service-token
+            {{- include "cd4pe.moduleEnv" (dict "root" . "container" "query") | nindent 12 }}
             {{- with .Values.query.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

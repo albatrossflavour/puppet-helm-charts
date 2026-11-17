@@ -109,7 +109,13 @@ jobs:
               echo
               cat body.md
             } > issue.md
-            gh issue create --title "$title" --body-file issue.md
+            # Reuse the open issue for this release if there is one.
+            existing="$(gh issue list --state open --search "\"${title}\" in:title" --json number --jq '.[0].number')"
+            if [[ -n "$existing" ]]; then
+              gh issue edit "$existing" --body-file issue.md
+            else
+              gh issue create --title "$title" --body-file issue.md
+            fi
           fi
 
           # A push made with the workflow's own token does not start other

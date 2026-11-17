@@ -59,7 +59,7 @@ The database passwords are set when Postgres first starts and the client secrets
 
 ## Connecting PE
 
-This part is written but hasn't been run against a PE install.
+The proxy is tested with a throwaway CA standing in for the PE CA: it starts, refuses a caller with no client certificate, and routes one that has a certificate to `scarpy`. It hasn't been run against a real PE install.
 
 SCM needs a certificate signed by the PE CA. On the PE primary:
 

@@ -31,22 +31,11 @@ spec:
             - name: HASURA_GRAPHQL_DATABASE_URL
               value: {{ printf "postgres://comply:$(COMPLY_DB_PASSWORD)@%s-postgres:5432/comply" (include "scm.fullname" .) | quote }}
             {{- include "scm.secretEnv" (dict "root" . "name" "HASURA_GRAPHQL_ADMIN_SECRET" "key" "hasura-admin-secret") | nindent 12 }}
-            - name: HASURA_SCARP_API_URL
-              value: {{ printf "http://%s-scarpy:8088/api" (include "scm.fullname" .) | quote }}
-            - name: HASURA_GRAPHQL_AUTH_HOOK
-              value: {{ printf "http://%s-scarpy:8088/api/hasura/auth" (include "scm.fullname" .) | quote }}
-            - name: HASURA_GRAPHQL_ENABLE_CONSOLE
-              value: "true"
-            - name: HASURA_GRAPHQL_ENABLE_TELEMETRY
-              value: "false"
-            - name: HASURA_GRAPHQL_DEV_MODE
-              value: "false"
-            - name: HASURA_GRAPHQL_V1_BOOLEAN_NULL_COLLAPSE
-              value: "true"
             - name: HASURA_GRAPHQL_LOG_LEVEL
               value: {{ .Values.logLevel | quote }}
-            - name: HASURA_GRAPHQL_CORS_DOMAIN
-              value: {{ printf "https://%s" .Values.hostname | quote }}
+            {{- with (include "scm.moduleEnv" (dict "root" . "container" "comply_graphql")) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 8080

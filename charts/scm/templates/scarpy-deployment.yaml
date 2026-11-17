@@ -31,6 +31,9 @@ spec:
           env:
             - name: ASSESSOR_VERSION
               value: {{ .Values.assessor.version | quote }}
+            {{- with (include "scm.moduleEnv" (dict "root" . "container" "comply_scarpy_assessor_init")) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           resources:
             requests:
               cpu: 50m
@@ -47,14 +50,9 @@ spec:
           command: ["sh", "-c", "scarp init /Assessor-CLI/benchmarks && scarp upgrade-assessor"]
           env:
             {{- include "scm.scarpEnv" . | nindent 12 }}
-            - name: MAX_IDLE_CONNS
-              value: "40"
-            - name: MAX_OPEN_CONNS
-              value: "80"
-            - name: IDLE_CONNS_LTS
-              value: "1"
-            - name: UPGRADE_PE_AGENT_RUN
-              value: "false"
+            {{- with (include "scm.moduleEnv" (dict "root" . "container" "comply_scarpy_init")) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           resources:
             requests:
               cpu: 50m
@@ -76,10 +74,6 @@ spec:
           # From the complyadm 3.9.0 comply_scarpy service in functions/config.pp.
           env:
             {{- include "scm.scarpEnv" . | nindent 12 }}
-            - name: COMPLY_SERVER
-              value: {{ .Values.hostname | quote }}
-            - name: DESIRED_SCAN_ENDPOINT
-              value: {{ printf "http://%s-scarpy:8088/api/v3/pe/task/ciscatscan/runScheduledScan" (include "scm.fullname" .) | quote }}
             - name: FEATURES
               value: {{ .Values.features | quote }}
             {{- include "scm.secretEnv" (dict "root" . "name" "HASURA_ADMIN_SECRET" "key" "hasura-admin-secret") | nindent 12 }}
@@ -94,22 +88,9 @@ spec:
               value: {{ .Values.scarpy.assessorUpdateInterval | quote }}
             - name: DATA_RETENTION_PERIOD
               value: {{ .Values.scarpy.dataRetentionPeriod | quote }}
-            - name: OIDC_ISSUER_URL
-              value: {{ printf "http://%s-identity:8080/auth/realms/Puppet" (include "scm.fullname" .) | quote }}
-            - name: PROXY_TLS_HANDSHAKE_TIMEOUT
-              value: 10s
-            - name: PROXY_IDLE_CONN_TIMEOUT
-              value: 90s
-            - name: PROXY_RESPONSE_HEADER_TIMEOUT
-              value: 10s
-            - name: INTROSPECTION_BLOCKED
-              value: "true"
-            - name: MAX_GRAPHQL_BATCH_SIZE
-              value: "10"
-            - name: MAX_GRAPHQL_REQUESTS_LIMIT
-              value: "300"
-            - name: MAX_GRAPHQL_REQUESTS_WITHIN
-              value: "60"
+            {{- with (include "scm.moduleEnv" (dict "root" . "container" "comply_scarpy")) }}
+            {{- . | nindent 12 }}
+            {{- end }}
             {{- with .Values.scarpy.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

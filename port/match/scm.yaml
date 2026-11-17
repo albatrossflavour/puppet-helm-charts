@@ -1,23 +1,60 @@
 # How the scm chart's containers line up with complyadm's, and every place the
 # chart differs from the module on purpose. port/check_match.py reads this.
 #
+# chart-sets lists the variables a template sets itself, because the value is a
+# secret or comes from a chart value. Every other variable the module gives a
+# container is generated into the chart's files/module-env.yaml.
+#
 # An allowance with a "module" value was written against that value. If a
 # module release changes it, the allowance stops applying and the difference
 # is reported again.
 
 containers:
-  comply_postgres: {workload: postgres, container: postgres}
-  comply_redis: {workload: redis, container: redis}
-  comply_graphql: {workload: graphql, container: graphql}
-  comply_identity: {workload: identity, container: identity}
-  comply_scarpy: {workload: scarpy, container: scarpy}
-  comply_scarpy_init: {workload: scarpy, container: scarpy-init}
-  comply_scarpy_assessor_init: {workload: scarpy, container: assessor-init}
-  comply_ui: {workload: ui, container: ui}
-  comply_ui_assessor_init: {workload: ui, container: assessor-init}
-  comply_gatekeeper: {workload: gatekeeper, container: gatekeeper}
-  comply_frontdoor: {workload: frontdoor, container: frontdoor}
-  comply_graphql_init: {workload: graphql-init, container: graphql-init}
+  comply_postgres:
+    workload: postgres
+    container: postgres
+    chart-sets: [POSTGRES_PASSWORD]
+  comply_redis:
+    workload: redis
+    container: redis
+  comply_graphql:
+    workload: graphql
+    container: graphql
+    chart-sets: [HASURA_GRAPHQL_DATABASE_URL, HASURA_GRAPHQL_ADMIN_SECRET, HASURA_GRAPHQL_LOG_LEVEL]
+  comply_identity:
+    workload: identity
+    container: identity
+    chart-sets: [KC_DB_PASSWORD, COMPLY_DB_PASSWORD, DB_ENCRYPTION_KEY, KC_BOOTSTRAP_ADMIN_USERNAME, KC_BOOTSTRAP_ADMIN_PASSWORD, KC_LOG_LEVEL, JAVA_OPTS, FEATURES]
+  comply_scarpy:
+    workload: scarpy
+    container: scarpy
+    chart-sets: [SCARP_DEBUG_LEVEL, ASSESSOR_VERSION, FEATURES, DB_PASSWORD, DB_ENCRYPTION_KEY, HASURA_ADMIN_SECRET, WS_REPORT_PROCESSOR_URL, WS_PE_UPDATE_FACTS_POLLER_INTERVAL, WS_PE_ASSESSOR_OUT_OF_DATE_POLLER_INTERVAL, DATA_RETENTION_PERIOD]
+  comply_scarpy_init:
+    workload: scarpy
+    container: scarpy-init
+    chart-sets: [SCARP_DEBUG_LEVEL, ASSESSOR_VERSION, DB_PASSWORD, DB_ENCRYPTION_KEY]
+  comply_scarpy_assessor_init:
+    workload: scarpy
+    container: assessor-init
+    chart-sets: [ASSESSOR_VERSION]
+  comply_ui:
+    workload: ui
+    container: ui
+    chart-sets: [COMPLY_VERSION, ASSESSOR_VERSION, LOGGING, FEATURES]
+  comply_ui_assessor_init:
+    workload: ui
+    container: assessor-init
+    chart-sets: [ASSESSOR_VERSION]
+  comply_gatekeeper:
+    workload: gatekeeper
+    container: gatekeeper
+  comply_frontdoor:
+    workload: frontdoor
+    container: frontdoor
+  comply_graphql_init:
+    workload: graphql-init
+    container: graphql-init
+    chart-sets: [SCARP_DEBUG_LEVEL, DB_PASSWORD, HASURA_ADMIN_SECRET]
   comply_mtls_proxy:
     omitted: Off by default. It needs a certificate from the PE CA, and is in the chart behind mtlsProxy.enabled.
   comply_assessor_upgrade:

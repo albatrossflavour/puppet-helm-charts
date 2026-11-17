@@ -26,14 +26,7 @@ spec:
           image: {{ include "cd4pe.image" (dict "root" . "image" .Values.ui.image) | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-            - name: CD4PE_SERVICE
-              value: {{ printf "http://%s-pipelinesinfra:8080" (include "cd4pe.fullname" .) | quote }}
-            - name: QUERY_SERVICE
-              value: {{ printf "http://%s-query:8080" (include "cd4pe.fullname" .) | quote }}
-            - name: LOGGING
-              value: info
-            - name: TEAMS_UI_VERSION
-              value: {{ .Chart.AppVersion | quote }}
+            {{- include "cd4pe.moduleEnv" (dict "root" . "container" "ui") | nindent 12 }}
           ports:
             - name: http
               containerPort: 3000

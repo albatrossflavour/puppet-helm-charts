@@ -1,15 +1,30 @@
 # How the cd4pe chart's containers line up with cd4peadm's, and every place the
 # chart differs from the module on purpose. port/check_match.py reads this.
 #
+# chart-sets lists the variables a template sets itself, because the value is a
+# secret or comes from a chart value. Every other variable the module gives a
+# container is generated into the chart's files/module-env.yaml.
+#
 # An allowance with a "module" value was written against that value. If a
 # module release changes it, the allowance stops applying and the difference
 # is reported again.
 
 containers:
-  pipelinesinfra: {workload: pipelinesinfra, container: pipelinesinfra}
-  query: {workload: query, container: query}
-  ui: {workload: ui, container: ui}
-  postgres: {workload: postgres, container: postgres}
+  pipelinesinfra:
+    workload: pipelinesinfra
+    container: pipelinesinfra
+    chart-sets: [CD4PE_BACKEND_SERVICE_ENDPOINT, CD4PE_WEBHOOK_URL, JVM_ARGS]
+  query:
+    workload: query
+    container: query
+    chart-sets: [DB_PASS, LOG_LEVEL, LOG_TO_FILE]
+  ui:
+    workload: ui
+    container: ui
+  postgres:
+    workload: postgres
+    container: postgres
+    chart-sets: [POSTGRES_PASSWORD]
 
 chart-only-containers:
   - workload: pipelinesinfra

@@ -171,20 +171,28 @@ Usage: include "scm.secretEnv" (dict "root" . "name" "DB_PASSWORD" "key" "comply
 {{- end }}
 
 {{/*
-Environment shared by scarpy and scarpy-init. From the complyadm 3.9.0
-comply_scarpy_init service in functions/config.pp.
+The environment complyadm gives a container, from files/module-env.yaml. That
+file is generated from the module by port/generate_files.py, so a variable a
+module release adds, drops or changes arrives here with no edit. It leaves out
+the variables a template sets itself.
+Usage: include "scm.moduleEnv" (dict "root" . "container" "comply_scarpy")
+*/}}
+{{- define "scm.moduleEnv" -}}
+{{- $all := .root.Files.Get "files/module-env.yaml" | fromYaml -}}
+{{- range $name, $value := (index $all .container) }}
+- name: {{ $name }}
+  value: {{ $value | toString | replace "@@FULLNAME@@" (include "scm.fullname" $.root) | replace "@@HOSTNAME@@" $.root.Values.hostname | replace "@@VERSION@@" $.root.Chart.AppVersion | quote }}
+{{- end }}
+{{- end }}
+
+{{/*
+The variables scarpy and scarpy-init both take from chart values or the Secret.
 */}}
 {{- define "scm.scarpEnv" -}}
 - name: SCARP_DEBUG_LEVEL
   value: {{ .Values.logLevel | quote }}
 - name: ASSESSOR_VERSION
   value: {{ .Values.assessor.version | quote }}
-- name: POSTGRES_HOSTNAME
-  value: {{ include "scm.fullname" . }}-postgres
-- name: QUERY_API
-  value: {{ printf "http://%s-graphql:8080/v1" (include "scm.fullname" .) | quote }}
-- name: DB_USER
-  value: comply
 {{ include "scm.secretEnv" (dict "root" . "name" "DB_PASSWORD" "key" "comply-db-password") }}
 {{ include "scm.secretEnv" (dict "root" . "name" "DB_ENCRYPTION_KEY" "key" "db-encryption-key") }}
 {{- end }}
