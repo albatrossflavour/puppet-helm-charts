@@ -37,7 +37,7 @@ Each chart is a port of what the Bolt module renders, and only of module version
 
 Most releases are a version bump. About one release a year per product needs more, usually a base image swap or a database upgrade that needs a dump and restore, and the chart can't do either of those for you.
 
-`Chart.yaml` records the module release each chart was last ported from. [`port/`](port) has scripts that snapshot a module release and diff two of them, which is how to find what a new release changed.
+`Chart.yaml` records the module release each chart was last ported from. A daily workflow checks the Forge for a newer release, ports what it can, and raises a branch and an issue for a person to review. [`docs/maintaining.md`](docs/maintaining.md) covers what that automation does, what it leaves to a person, and what the repo needs to keep working. [`port/`](port) holds the scripts.
 
 ## Checking a change
 

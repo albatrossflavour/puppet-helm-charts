@@ -11,7 +11,7 @@
 # It writes a Markdown report to $REPORT_DIR/<chart>.md and, under GitHub
 # Actions, sets these step outputs:
 #
-#   status   current | version-only | drift | schema-change
+#   status   current | version-only | drift | schema-change | snapshot-failed
 #   module   cd4peadm | complyadm
 #   from     the module version the chart was ported from
 #   to       the newest released module version
@@ -121,8 +121,18 @@ if (( snapshot_rc == 2 )); then
   emit status schema-change
   exit 0
 elif (( snapshot_rc != 0 )); then
-  cat "$work/snapshot.log" >&2
-  exit 68
+  # Most often a module template that gained a parameter port/render has no
+  # value for. Whatever it is, a person needs to see it, so report it instead
+  # of failing where nobody is looking.
+  {
+    echo "The new release could not be snapshotted, so nothing was compared and no branch was pushed. Fix what the error names on \`main\`, then run the workflow again."
+    echo
+    echo '```text'
+    grep -v '^[[:space:]]*from ' "$work/snapshot.log" | tail -n 12
+    echo '```'
+  } >> "$report"
+  emit status snapshot-failed
+  exit 0
 fi
 
 new_config="$work/new-snapshots/${module}-${to}.config.json"

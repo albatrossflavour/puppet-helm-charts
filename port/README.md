@@ -1,10 +1,10 @@
 # Finding what a new module release changes
 
-The charts are ports of `cd4peadm` and `complyadm`. These scripts turn a module release into two JSON snapshots, so the difference between two releases is a diff and not a read-through.
+The charts are ports of `cd4peadm` and `complyadm`. These scripts turn a module release into three JSON snapshots, so the difference between two releases is a diff and not a read-through. [`docs/maintaining.md`](../docs/maintaining.md) explains how they fit together and what to do when one of them fails. This page is the reference for running them by hand.
 
 ```bash
 port/snapshot.sh cd4peadm /path/to/modules /tmp/new
-port/diff_snapshots.py port/snapshots/cd4peadm-5.18.0.config.json /tmp/new/cd4peadm-5.19.0.config.json
+port/diff_snapshots.py port/snapshots/cd4peadm-5.19.0.config.json /tmp/new/cd4peadm-5.20.0.config.json
 ```
 
 `/path/to/modules` holds the module and its dependencies, as `bolt module install` lays them out.

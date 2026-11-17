@@ -123,15 +123,20 @@ jobs:
           gh workflow run lint.yaml --ref "$branch"
           gh workflow run e2e.yaml --ref "$branch"
 
-      - name: Open an issue for a settings schema change
-        if: steps.check.outputs.status == 'schema-change'
+      - name: Open an issue when the release could not be compared
+        if: steps.check.outputs.status == 'schema-change' || steps.check.outputs.status == 'snapshot-failed'
         env:
           GH_TOKEN: ${{ github.token }}
+          STATUS: ${{ steps.check.outputs.status }}
           MODULE: ${{ steps.check.outputs.module }}
           TO: ${{ steps.check.outputs.to }}
           REPORT: ${{ runner.temp }}/port/${{ matrix.chart }}.md
         run: |
-          title="${MODULE} ${TO} needs a new fixture"
+          if [[ "$STATUS" == "schema-change" ]]; then
+            title="${MODULE} ${TO} needs a new fixture"
+          else
+            title="${MODULE} ${TO} could not be snapshotted"
+          fi
           if [[ -n "$(gh issue list --state open --search "\"${title}\" in:title" --json number --jq '.[].number')" ]]; then
             echo "An issue for this is already open."
             exit 0
