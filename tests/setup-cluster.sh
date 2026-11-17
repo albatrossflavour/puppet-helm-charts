@@ -20,9 +20,44 @@ fi
 log "Installing ingress-nginx ${INGRESS_NGINX_VERSION}"
 kubectl apply -f "https://raw.githubusercontent.com/kubernetes/ingress-nginx/${INGRESS_NGINX_VERSION}/deploy/static/provider/kind/deploy.yaml" >/dev/null
 kubectl -n ingress-nginx rollout status deployment/ingress-nginx-controller --timeout=300s
-# The admission webhook refuses Ingress objects until its endpoint is up.
 kubectl -n ingress-nginx wait --for=condition=Ready pod \
   -l app.kubernetes.io/component=controller --timeout=300s >/dev/null
 
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+
+# A Ready controller pod is not enough: the admission webhook can still refuse
+# connections for a few seconds, and an install that creates an Ingress in that
+# window fails. Wait until the API server can really get an Ingress validated.
+log "Waiting for the ingress admission webhook"
+probe_ingress() {
+  kubectl -n "$NAMESPACE" apply --dry-run=server -f - >/dev/null 2>&1 <<YAML
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: webhook-probe
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: webhook-probe.kind.test
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: webhook-probe
+                port:
+                  number: 80
+YAML
+}
+for attempt in $(seq 1 60); do
+  if probe_ingress; then
+    break
+  fi
+  if (( attempt == 60 )); then
+    fail "the ingress admission webhook did not start answering within two minutes"
+  fi
+  sleep 2
+done
+
 pass "cluster ${CLUSTER_NAME} is ready, ingress on 127.0.0.1:${INGRESS_HTTPS_PORT}"
