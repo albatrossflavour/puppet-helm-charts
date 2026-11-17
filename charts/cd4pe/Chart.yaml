@@ -10,6 +10,8 @@ keywords:
   - cd4pe
   - continuous-delivery
 home: https://www.puppet.com/docs/continuous-delivery/
+sources:
+  - https://github.com/albatrossflavour/puppet-helm-charts
 annotations:
   artifacthub.io/license: Apache-2.0
   # The Bolt module release this chart was last ported from.

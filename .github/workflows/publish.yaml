@@ -1,0 +1,53 @@
+name: Publish charts
+
+# Packages each chart and pushes it to ghcr.io as an OCI artefact. Runs when
+# the install tests pass on main, so nothing is published that didn't install
+# and log in. A chart version that is already in the registry is left alone:
+# to publish a change, bump the version in Chart.yaml.
+on:
+  workflow_run:
+    workflows: [Install and login tests]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ghcr.io/${{ github.repository_owner }}/charts
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The commit the tests passed on, not whatever main is by now.
+          ref: ${{ github.event.workflow_run.head_sha || 'main' }}
+
+      - uses: azure/setup-helm@v4
+
+      - name: Log in to ghcr.io
+        run: echo "${{ github.token }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Package and push new chart versions
+        run: |
+          for dir in charts/*/; do
+            name="$(sed -n 's/^name: *//p' "${dir}Chart.yaml")"
+            version="$(sed -n 's/^version: *//p' "${dir}Chart.yaml")"
+            if helm show chart "oci://${REGISTRY}/${name}" --version "$version" >/dev/null 2>&1; then
+              echo "${name} ${version} is already published"
+              continue
+            fi
+            helm package "$dir" --destination packaged
+            helm push "packaged/${name}-${version}.tgz" "oci://${REGISTRY}"
+            echo "Published ${name} ${version}" | tee -a "$GITHUB_STEP_SUMMARY"
+          done

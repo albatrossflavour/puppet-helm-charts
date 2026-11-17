@@ -2,12 +2,12 @@
 
 Puppet Security Compliance Management 3.9.1 on Kubernetes. Unofficial, and not supported by Puppet.
 
-It runs the containers `complyadm` 3.9.0 runs, with the configuration that module renders: Postgres, Redis, Hasura (`graphql`), Keycloak (`identity`), `scarpy` (the SCM API), the UI, an oauth2-proxy (`gatekeeper`), and an nginx in front (`frontdoor`).
+It runs the containers `complyadm` runs, with the configuration that module renders: Postgres, Redis, Hasura (`graphql`), Keycloak (`identity`), `scarpy` (the SCM API), the UI, an oauth2-proxy (`gatekeeper`), and an nginx in front (`frontdoor`).
 
 ## Install
 
 ```bash
-helm install scm . -n puppet --create-namespace --set hostname=scm.example.com
+helm install scm oci://ghcr.io/albatrossflavour/charts/scm -n puppet --create-namespace --set hostname=scm.example.com
 ```
 
 `hostname` is the only value without a default.

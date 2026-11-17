@@ -11,21 +11,23 @@ Puppet ships both products as containers run by a Bolt module (`cd4peadm` and `c
 
 ## Status
 
-Both charts have been installed from scratch, upgraded, and logged in to on one cluster so far, which is Talos with ingress-nginx and Rook-Ceph. Neither has been connected to a PE primary yet, so nobody has run a CD4PE pipeline or an SCM scan through them. Each chart's README lists what it doesn't do.
+Both charts have been installed from scratch, upgraded, and logged in to on one cluster so far, which is Talos with ingress-nginx and Rook-Ceph. Both have been connected to a PE 2025.11.3 primary. SCM has run a scan on a node through it. CD4PE has listed PE's node groups, but nobody has run a pipeline through it yet. Each chart's README lists what it doesn't do.
 
-CD4PE needs a licence from Puppet, and the chart has no way to load one yet. The charts pull the product images straight from Puppet's registry and don't redistribute anything.
+CD4PE needs a licence from Puppet, which you supply as a Secret. The charts pull the product images straight from Puppet's registry and don't redistribute anything.
 
 ## Install
 
 ```bash
-helm install cd4pe ./charts/cd4pe -n puppet --create-namespace \
+helm install cd4pe oci://ghcr.io/albatrossflavour/charts/cd4pe -n puppet --create-namespace \
   --set hostname=cd4pe.example.com \
   --set backendHostname=cd4pe-backend.example.com \
   --set rootUser.email=admin@example.com
 
-helm install scm ./charts/scm -n puppet \
+helm install scm oci://ghcr.io/albatrossflavour/charts/scm -n puppet \
   --set hostname=scm.example.com
 ```
+
+That installs the newest published version. Add `--version` to pin one, and `helm show values oci://ghcr.io/albatrossflavour/charts/scm` lists every value. A chart version is published once the install tests have passed on `main`.
 
 Both need an ingress controller and a default storage class. CD4PE also needs a `ReadWriteMany` storage class. Without one, set `queryToken.persistence.accessMode=ReadWriteOnce` and the chart pins two of its pods to one node.
 

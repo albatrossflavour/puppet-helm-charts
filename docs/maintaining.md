@@ -197,6 +197,14 @@ The test prints the state of the release and the last log lines of every pod tha
 
 A branch can pass every install test and still not match the module, which is why the match check exists.
 
+## Publishing
+
+The `Publish charts` workflow runs when the install tests pass on `main`. It packages each chart and pushes it to `ghcr.io/albatrossflavour/charts/<chart>` as an OCI artefact, at the version in `Chart.yaml`.
+
+It never overwrites a version that's already there. A change to a chart only reaches users when its `version` goes up, so bump it in the same pull request as the change. A port from the release workflow bumps it for you.
+
+A chart change with no version bump still merges and still passes its tests, and nothing is published. If a fix doesn't seem to have reached anyone, check the version first.
+
 ## What needs looking after
 
 ### The Forge key
@@ -242,8 +250,6 @@ tests/setup-cluster.sh && tests/test-cd4pe.sh
 Use `scm` and `tests/test-scm.sh` for the other chart. The report is written to `rendered/port/<chart>.md`. The install tests pull about 10 GB of images, and [`tests/README.md`](../tests/README.md) has the detail.
 
 ## What this repo does not do
-
-The charts aren't published. There's no packaged chart or Helm repository, so people install from a clone.
 
 Nothing here migrates data. The report says when a release changed the upgrade plan, and the upgrade test may fail on such a release. Moving a database between Postgres versions is still a runbook someone writes for that release.
 

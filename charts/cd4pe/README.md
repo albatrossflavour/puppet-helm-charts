@@ -2,12 +2,12 @@
 
 Continuous Delivery for Puppet Enterprise 5.19.0 on Kubernetes. Unofficial, and not supported by Puppet.
 
-It runs the four containers `cd4peadm` 5.18.0 runs (`ui`, `pipelinesinfra`, `query`, and `postgres`) with the configuration that module renders.
+It runs the four containers `cd4peadm` runs (`ui`, `pipelinesinfra`, `query`, and `postgres`) with the configuration that module renders.
 
 ## Install
 
 ```bash
-helm install cd4pe . -n puppet --create-namespace \
+helm install cd4pe oci://ghcr.io/albatrossflavour/charts/cd4pe -n puppet --create-namespace \
   --set hostname=cd4pe.example.com \
   --set backendHostname=cd4pe-backend.example.com \
   --set rootUser.email=admin@example.com

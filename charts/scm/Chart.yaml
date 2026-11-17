@@ -11,6 +11,8 @@ keywords:
   - comply
   - compliance
 home: https://www.puppet.com/docs/security-compliance-management/
+sources:
+  - https://github.com/albatrossflavour/puppet-helm-charts
 annotations:
   artifacthub.io/license: Apache-2.0
   # The Bolt module release this chart was last ported from.
