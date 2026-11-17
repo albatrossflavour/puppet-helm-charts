@@ -28,3 +28,21 @@ jobs:
         run: |
           helm template t charts/${{ matrix.chart }} -f charts/${{ matrix.chart }}/ci/test-values.yaml \
             | kubeconform -strict -summary
+
+  # The chart's config files are generated from the module snapshot, and the
+  # chart has to deploy what the module does. Neither check needs the Forge.
+  port:
+    name: port (${{ matrix.chart }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: [cd4pe, scm]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Install PyYAML
+        run: python3 -m pip install --quiet pyyaml
+      - name: Generated files are up to date
+        run: port/generate_files.py ${{ matrix.chart }} --check
+      - name: The chart matches the module
+        run: port/check_match.py ${{ matrix.chart }}

@@ -11,7 +11,11 @@ port/diff_snapshots.py port/snapshots/cd4peadm-5.18.0.config.json /tmp/new/cd4pe
 
 `*.config.json` is the module's own `config()` evaluated by Bolt against the fixture data in `fixtures/`: images, env vars, commands, and the rendered realm and oauth2-proxy files. `*.resources.json` is what each component manifest declares, read from its source: mounts, ports, paths, and files. It also checksums every template, static file, and upgrade plan, so a changed file is named even when nothing else gives it away.
 
+`*.rendered.json` is the module's templates rendered with the fixed values in `render/`.
+
 `snapshots/` holds the releases the charts were last ported from.
+
+`generate_files.py` builds each chart's `files/` from the rendered templates, applying the edits that make them fit Kubernetes. Don't edit those files by hand: change the recipe. `check_match.py` compares what the chart renders with what the module would run, container by container, and fails on any difference `match/` doesn't allow. Each allowance records the module value it was written against, so it stops applying when the module changes.
 
 `check-release.sh` puts it together: it asks the Forge for the newest released version of a chart's module, snapshots and diffs it, writes a report, and with `--apply` bumps the chart. The `Check for module releases` workflow runs it daily and opens a pull request.
 

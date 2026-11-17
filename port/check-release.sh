@@ -234,7 +234,22 @@ if chart == "scm" and assessor:
     rewrite(f"{repo}/charts/scm/values.yaml", [(r'^(  version: )"[\d.]+"$', rf'\g<1>"{assessor}"')])
 PY
   rm -f "$here/snapshots/${module}-${from}".*.json
-  cp "$new_config" "$new_resources" "$here/snapshots/"
+  cp "$work/new-snapshots/${module}-${to}".*.json "$here/snapshots/"
+
+  # Regenerate the chart's config files from the new release, then check the
+  # chart still deploys what the module does. Both results go in the report:
+  # a recipe that no longer fits, or a difference the match file does not
+  # allow, is work for a person.
+  {
+    echo
+    echo "### The chart after the bump"
+    echo
+    echo '```text'
+    "$here/generate_files.py" "$chart" 2>&1 || true
+    git -C "$repo" status --short -- "charts/$chart/files" | sed 's/^/changed: /'
+    "$here/check_match.py" "$chart" 2>&1 || true
+    echo '```'
+  } >> "$report"
 fi
 
 emit status "$status"

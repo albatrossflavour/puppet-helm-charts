@@ -25,6 +25,9 @@ spec:
           image: {{ include "scm.assessorImage" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["sh", "-c", {{ printf "cp /files/Assessor-CLI-*v%s.zip ." .Values.assessor.version | quote }}]
+          env:
+            - name: ASSESSOR_VERSION
+              value: {{ .Values.assessor.version | quote }}
           resources:
             requests:
               cpu: 50m

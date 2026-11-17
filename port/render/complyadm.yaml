@@ -1,0 +1,35 @@
+# The module templates the scm chart is built from, and the values each is
+# rendered with. See cd4peadm.yaml for how this file is read.
+templates:
+  templates/frontdoor/nginx_conf.epp:
+    runtime: docker
+    application_port: "443"
+    admin_console_enabled: false
+  templates/mtls_proxy/nginx_conf.epp:
+    runtime: docker
+    pe_cert_checks_disabled: false
+  templates/gatekeeper/oauth2_proxy.cfg.epp:
+    client_secret: "@@CLIENT_SECRET@@"
+    cookie_secret: "@@COOKIE_SECRET@@"
+    host_fqdn: "@@HOSTNAME@@"
+    application_port: "443"
+    scarpy: "@@FULLNAME@@-scarpy"
+    graphql: "@@FULLNAME@@-graphql"
+    ui: "@@FULLNAME@@-ui"
+  templates/postgres/postgresql.conf.epp:
+    log_level: info
+  templates/identity/puppet-realm.json.epp:
+    account: "@@KC_ACCOUNT_SECRET@@"
+    account_console: "@@KC_ACCOUNT_CONSOLE_SECRET@@"
+    admin_cli: "@@KC_ADMIN_CLI_SECRET@@"
+    broker: "@@KC_BROKER_SECRET@@"
+    realm_management: "@@KC_REALM_MANAGEMENT_SECRET@@"
+    security_admin_console: "@@KC_SECURITY_ADMIN_CONSOLE_SECRET@@"
+    comply: "@@CLIENT_SECRET@@"
+    host_fqdn: "@@HOSTNAME@@"
+    application_port: "443"
+    https_port: 3001
+    sso_session_idle_timeout: 1800
+    access_token_lifespan: 300
+files:
+  - files/postgres/pg_hba.conf

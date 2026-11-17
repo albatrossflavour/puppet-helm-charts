@@ -1,0 +1,85 @@
+# How the scm chart's containers line up with complyadm's, and every place the
+# chart differs from the module on purpose. port/check_match.py reads this.
+#
+# An allowance with a "module" value was written against that value. If a
+# module release changes it, the allowance stops applying and the difference
+# is reported again.
+
+containers:
+  comply_postgres: {workload: postgres, container: postgres}
+  comply_redis: {workload: redis, container: redis}
+  comply_graphql: {workload: graphql, container: graphql}
+  comply_identity: {workload: identity, container: identity}
+  comply_scarpy: {workload: scarpy, container: scarpy}
+  comply_scarpy_init: {workload: scarpy, container: scarpy-init}
+  comply_scarpy_assessor_init: {workload: scarpy, container: assessor-init}
+  comply_ui: {workload: ui, container: ui}
+  comply_ui_assessor_init: {workload: ui, container: assessor-init}
+  comply_gatekeeper: {workload: gatekeeper, container: gatekeeper}
+  comply_frontdoor: {workload: frontdoor, container: frontdoor}
+  comply_graphql_init: {workload: graphql-init, container: graphql-init}
+  comply_mtls_proxy:
+    omitted: Off by default. It needs a certificate from the PE CA, and is in the chart behind mtlsProxy.enabled.
+  comply_assessor_upgrade:
+    omitted: Its command only prints the environment, database password included, so it does nothing useful.
+    module-command: env
+
+chart-only-containers:
+  - workload: identity
+    container: render-realm
+    reason: Fills the client secrets into the realm import. complyadm renders that file on the host.
+  - workload: redis
+    container: render-redis-conf
+    reason: Writes redis.conf with the password. complyadm renders that file on the host.
+
+allow:
+  - container: comply_gatekeeper
+    kind: command
+    module: "--config=/run/secrets/oauth2_proxy.cfg"
+    reason: The config has no secrets in it here, so it is mounted from a ConfigMap at /etc/oauth2-proxy.
+  - container: comply_gatekeeper
+    kind: env-chart-only
+    name: OAUTH2_PROXY_CLIENT_SECRET
+    reason: complyadm writes the secret into oauth2_proxy.cfg. The chart passes it in the environment.
+  - container: comply_gatekeeper
+    kind: env-chart-only
+    name: OAUTH2_PROXY_COOKIE_SECRET
+    reason: complyadm writes the secret into oauth2_proxy.cfg. The chart passes it in the environment.
+  - container: comply_graphql
+    kind: env-chart-only
+    name: COMPLY_DB_PASSWORD
+    reason: Only there so the kubelet can expand it inside HASURA_GRAPHQL_DATABASE_URL.
+  - container: comply_identity
+    kind: env-omitted
+    name: KC_TRUSTSTORE_PATHS
+    module: /certs/cert_chain.pem
+    reason: It makes Keycloak trust frontdoor's own certificate. The ingress serves the certificate here.
+  - container: comply_postgres
+    kind: env-chart-only
+    name: COMPLY_DB_PASSWORD
+    reason: Read by the init script that replaces complyadm's initdb.sql.
+  - container: comply_postgres
+    kind: env-chart-only
+    name: KEYCLOAK_DB_PASSWORD
+    reason: Read by the init script that replaces complyadm's initdb.sql.
+  - container: comply_redis
+    kind: env-omitted
+    name: REDIS_PASSWORD
+    module: fixture-redis-password
+    reason: complyadm passes it for its healthcheck script. The chart's probe reads REDISCLI_AUTH.
+  - container: comply_redis
+    kind: env-chart-only
+    name: REDISCLI_AUTH
+    reason: Lets the probe run redis-cli with no shell and no password argument.
+  - container: comply_scarpy
+    kind: env-chart-only
+    name: REDIS_PASSWORD
+    reason: Only there so the kubelet can expand it inside WS_REPORT_PROCESSOR_URL.
+  - container: comply_scarpy
+    kind: command
+    module: "sh -c 'i=0; until [ -f /Assessor-CLI/.scarp-init-complete ] || [ $i -ge 300 ]; do sleep 1; i=$((i+1)); done; [ -f /Assessor-CLI/.scarp-init-complete ] || { echo \"timed out waiting for /Assessor-CLI/.scarp-init-complete\" >&2; exit 1; }; exec scarp api --unsafe'"
+    reason: complyadm polls for a sentinel file because systemd ordering does not wait. initContainers run in order, so the polling is gone.
+  - container: comply_scarpy_init
+    kind: command
+    module: "sh -c 'rm -f /Assessor-CLI/.scarp-init-complete; i=0; until [ -f /Assessor-CLI/.copy-complete ] || [ $i -ge 60 ]; do sleep 1; i=$((i+1)); done; [ -f /Assessor-CLI/.copy-complete ] || { echo \"timed out waiting for /Assessor-CLI/.copy-complete\" >&2; exit 1; }; scarp init /Assessor-CLI/benchmarks && scarp upgrade-assessor && touch /Assessor-CLI/.scarp-init-complete'"
+    reason: complyadm polls for a sentinel file because systemd ordering does not wait. initContainers run in order, so the polling is gone.

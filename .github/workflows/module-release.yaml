@@ -36,6 +36,11 @@ jobs:
         with:
           ruby-version: "3.4"
 
+      - uses: azure/setup-helm@v4
+
+      - name: Install PyYAML
+        run: python3 -m pip install --quiet pyyaml
+
       - name: Install Bolt
         env:
           FORGE_TOKEN: ${{ secrets.FORGE_TOKEN }}

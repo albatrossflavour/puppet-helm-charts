@@ -1,0 +1,61 @@
+# How the cd4pe chart's containers line up with cd4peadm's, and every place the
+# chart differs from the module on purpose. port/check_match.py reads this.
+#
+# An allowance with a "module" value was written against that value. If a
+# module release changes it, the allowance stops applying and the difference
+# is reported again.
+
+containers:
+  pipelinesinfra: {workload: pipelinesinfra, container: pipelinesinfra}
+  query: {workload: query, container: query}
+  ui: {workload: ui, container: ui}
+  postgres: {workload: postgres, container: postgres}
+
+chart-only-containers:
+  - workload: pipelinesinfra
+    container: render-pfi-config
+    reason: Writes pfi-config.json from the Secret. cd4peadm renders that file on the host.
+  - workload: root-credentials
+    container: render-pfi-config
+    reason: The same file, for the root credentials job.
+  - workload: root-credentials
+    container: root-credentials
+    reason: cd4peadm sets the root credentials from a plan, cd4peadm::install::update_root_credentials. The chart runs it as a hook job.
+
+allow:
+  - container: pipelinesinfra
+    kind: env-differs
+    name: CD4PE_BACKEND_SERVICE_ENDPOINT
+    module: http://@@HOSTNAME@@:8000
+    reason: cd4peadm publishes the backend on port 8000 of the one hostname. The chart gives it its own hostname behind the ingress.
+  - container: pipelinesinfra
+    kind: env-differs
+    name: CD4PE_WEBHOOK_URL
+    module: http://cd4pe.fixture.test:8000
+    reason: cd4peadm publishes the backend on port 8000 of the one hostname. The chart gives it its own hostname behind the ingress.
+  - container: pipelinesinfra
+    kind: env-differs
+    name: JVM_ARGS
+    module: "@@JVM_ARGS@@"
+    reason: The manifest builds this from its default_java_args variable and the java_args setting. The snapshot diff reports a change to either.
+  - container: pipelinesinfra
+    kind: env-chart-only
+    name: OTEL_LOGS_EXPORTER
+    reason: Without it the OpenTelemetry agent retries a log export to localhost for ever and fills the pod log.
+  - container: postgres
+    kind: env-chart-only
+    name: CD4PE_DB_PASSWORD
+    reason: Read by the init script that replaces cd4peadm's initdb.sql.
+  - container: postgres
+    kind: env-chart-only
+    name: QUERY_DB_PASSWORD
+    reason: Read by the init script that replaces cd4peadm's initdb.sql.
+  - container: postgres
+    kind: env-chart-only
+    name: PGDATA
+    reason: A subdirectory of the volume, so a lost+found on a block volume does not stop initdb.
+  - container: query
+    kind: env-differs
+    name: LOG_TO_FILE
+    module: "true"
+    reason: Logs go to stdout for kubectl logs.

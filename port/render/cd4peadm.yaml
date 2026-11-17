@@ -1,0 +1,42 @@
+# The module templates the cd4pe chart is built from, and the values each is
+# rendered with. The values are fixed, so the same module release always
+# renders the same text. @@NAME@@ values are placeholders the chart fills in.
+#
+# A value is only passed if the template declares that parameter, so one spec
+# covers releases with different parameter lists. A template that declares a
+# parameter with no value here stops the render: that is a change someone
+# needs to look at.
+templates:
+  templates/nginx/base.conf.template.epp:
+    enable_ssl_webhooks: false
+    webhook_port: 8000
+    webhook_service: http://unused.invalid:8800
+    proxy_read_timeout: 300
+    crl_enabled: false
+  templates/log4j2.properties.epp:
+    log_dir: /app/logs
+    log_file_size: 200MB
+    log_level: info
+    keep_files: 5
+  templates/postgres/postgresql.conf.epp:
+    log_directory: /var/log/postgresql
+    log_level: ERROR
+    max_wal_size: 1GB
+  templates/cd4pe_env.epp:
+    version: "@@VERSION@@"
+    jvm_args: "@@JVM_ARGS@@"
+    resolvable_hostname: "@@HOSTNAME@@"
+    log4j_path: /opt/pfi/log4j2.properties
+    env_vars: {}
+    webhook_port: 8000
+    enable_ssl_webhooks: false
+  templates/query_env.epp:
+    hostname: "@@HOST_IP@@"
+    log_level: INFO
+    db_username: query
+    db_password:
+      sensitive: "@@QUERY_DB_PASSWORD@@"
+    db_endpoint: postgres://@@HOST_IP@@:5432/query
+    env_vars: {}
+files:
+  - files/postgres/pg_hba.conf

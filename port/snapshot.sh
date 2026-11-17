@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Snapshot what a cd4peadm or complyadm release would deploy, as two JSON files:
+# Snapshot what a cd4peadm or complyadm release would deploy, as three JSON files:
 #
 #   <out>/<module>-<version>.config.json     the module's own config() evaluated
 #                                            by Bolt against fixture data
 #   <out>/<module>-<version>.resources.json  what each component manifest
 #                                            declares, read from its source
+#   <out>/<module>-<version>.rendered.json   the module's templates rendered
+#                                            with the values in port/render
 #
 # usage: snapshot.sh <cd4peadm|complyadm> <dir holding that module and its dependencies> [out dir]
 #
@@ -66,4 +68,8 @@ PY
 
 ruby "$here/extract_resources.rb" "$moduleset/$module" > "$out/${name}.resources.json"
 
-echo "${name}: config (fixture ${config_ok}) and resources written to ${out}"
+# The module's templates, rendered with the fixed values in port/render. The
+# chart's config files are generated from these.
+ruby "$here/render_templates.rb" "$moduleset/$module" "$here/render/${module}.yaml" > "$out/${name}.rendered.json"
+
+echo "${name}: config (fixture ${config_ok}), resources and rendered templates written to ${out}"
