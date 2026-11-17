@@ -1,0 +1,8 @@
+# SCM on a one-node kind cluster. gatekeeper.hostAliases is set by the test,
+# because the ingress controller's address is only known once it is installed.
+hostname: scm.kind.test
+keepOnUninstall: false
+ingress:
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"

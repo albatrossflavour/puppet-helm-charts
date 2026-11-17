@@ -46,7 +46,7 @@ helm lint charts/cd4pe --strict -f charts/cd4pe/ci/test-values.yaml
 helm template t charts/cd4pe -f charts/cd4pe/ci/test-values.yaml | kubeconform -strict -summary
 ```
 
-Several of the bugs found while writing the charts only showed up on a real install, so install into a scratch namespace and run `helm test` before trusting a change.
+Several of the bugs found while writing the charts only showed up on a real install. [`tests/`](tests) installs each chart on a throwaway kind cluster and logs in to the product, and the same tests run in GitHub Actions on every change to a chart.
 
 ## Licence
 

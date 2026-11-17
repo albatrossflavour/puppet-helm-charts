@@ -1,0 +1,15 @@
+# CD4PE on a one-node kind cluster.
+hostname: cd4pe.kind.test
+backendHostname: cd4pe-backend.kind.test
+rootUser:
+  email: root@kind.test
+keepOnUninstall: false
+ingress:
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 75m
+# kind's only storage class is ReadWriteOnce, so query is pinned to the
+# pipelinesinfra node. With one node that is where it would land anyway.
+queryToken:
+  persistence:
+    accessMode: ReadWriteOnce

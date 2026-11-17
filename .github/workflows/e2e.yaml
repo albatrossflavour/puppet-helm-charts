@@ -1,0 +1,48 @@
+name: Install and login tests
+
+# Installs each chart on a kind cluster and logs in to the product. Slower
+# than the lint workflow (several GB of images), so it only runs when a chart
+# or a test changes, or by hand.
+on:
+  pull_request:
+    paths:
+      - charts/**
+      - tests/**
+      - .github/workflows/e2e.yaml
+  push:
+    branches: [main]
+    paths:
+      - charts/**
+      - tests/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: ${{ matrix.chart }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        chart: [cd4pe, scm]
+    env:
+      # One chart per job needs well under this. The default in tests/lib.sh
+      # is sized for running both charts on one machine.
+      MIN_FREE_GB: "8"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk on the runner
+        run: df -h / | tail -1
+      - uses: azure/setup-helm@v4
+      # ubuntu-latest ships docker, kubectl and kind.
+      - name: Create the kind cluster
+        run: tests/setup-cluster.sh
+      - name: Install ${{ matrix.chart }} and log in
+        run: tests/test-${{ matrix.chart }}.sh
