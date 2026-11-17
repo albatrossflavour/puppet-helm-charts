@@ -58,13 +58,13 @@ The `Check for module releases` workflow runs once a day (19:17 UTC) and can be 
 6. It bumps the chart: `appVersion`, the chart version, the annotation, the version mentions in the READMEs and `NOTICE`, and for SCM the assessor version.
 7. It regenerates the chart's `files/` from the new release with `port/generate_files.py`.
 8. It runs `port/check_match.py`, which checks the chart still deploys what the module does.
-9. It pushes a branch called `port/<module>-<version>`, opens an issue with the report, and starts the lint and install tests on the branch.
+9. It pushes a branch called `port/<module>-<version>`, opens a pull request with the report as its description, and starts the lint and install tests on the branch.
 
 Steps 7 and 8 can fail without stopping the run. The branch is still pushed, and what they printed is at the end of the report under "The chart after the bump".
 
-The workflow never merges. The issue has a compare link that opens a pull request from the branch, or you can merge the branch into `main` yourself. Close the issue once it's merged.
+The workflow never merges. A pull request for a drift port opens as a draft, so mark it ready once you've been through the list under "Drift" below. The workflow starts the tests against the branch, so if their results don't show on the pull request, find them on the Actions tab under the branch name.
 
-A release is only raised once: if its branch already exists, the workflow leaves it alone. To redo a port after changing the tooling, delete the branch and run the workflow again, and it updates the open issue.
+A release is only raised once: if its branch already exists, the workflow leaves it alone. To redo a port after changing the tooling, delete the branch, which closes its pull request, and run the workflow again to get a new one.
 
 ## The four outcomes
 
@@ -215,7 +215,9 @@ GitHub turns off scheduled workflows in a repo with no activity for 60 days. If 
 
 ### Pull requests
 
-The repo setting "Allow GitHub Actions to create and approve pull requests" is off, so the workflow opens an issue with a compare link. With it on, the workflow opens a pull request instead, as a draft when there's drift. Either works, and it's the maintainer's call.
+The workflow can only open a pull request while the repo setting "Allow GitHub Actions to create and approve pull requests" is on (Settings, Actions, General). It is on. If it gets turned off, the workflow falls back to opening an issue that holds the report and a compare link for the branch, and you merge the branch and close the issue by hand.
+
+The same setting lets a workflow approve a pull request. That doesn't matter while `main` has no rule requiring an approval. If you add one, require a code owner's review so a workflow can't satisfy it.
 
 ### Pinned tools
 

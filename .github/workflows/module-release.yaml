@@ -101,8 +101,9 @@ jobs:
           draft=()
           if [[ "$STATUS" == "drift" ]]; then draft=(--draft); fi
           if ! gh pr create --base main --head "$branch" --title "$title" --body-file body.md "${draft[@]}"; then
-            # The repository setting that lets Actions open pull requests is
-            # off. The branch is pushed, so say where it is.
+            # Most likely the repository setting that lets Actions open pull
+            # requests has been turned off. The branch is pushed, so raise an
+            # issue that says where it is.
             {
               echo "The branch \`${branch}\` is pushed, but Actions is not allowed to open pull requests in this repository."
               echo "Open one from https://github.com/${{ github.repository }}/compare/main...${branch}"
