@@ -1,0 +1,170 @@
+{
+  "all_targets": [
+    "aio"
+  ],
+  "backup_dir": "/var/lib/puppetlabs/cd4pe/backups",
+  "base_image_download_url": "https://storage.googleapis.com/cd4pe-images",
+  "database": {
+    "managed": {
+      "admin_db_password": "<sensitive>",
+      "cd4pe_db_password": "<sensitive>",
+      "cd4pe_db_username": "cd4pe",
+      "query_db_password": "<sensitive>",
+      "query_db_username": "query"
+    },
+    "mode": "managed"
+  },
+  "dump_filename": "cd4pe-postgres-<date>.dump",
+  "images": {
+    "pipelinesinfra": "gcr.io/platform-services-297419/cd4pe/continuous-delivery-for-puppet-enterprise:5.18.0",
+    "postgres": "gcr.io/platform-services-297419/cd4pe-postgresql:5.18.0",
+    "query": "gcr.io/platform-services-297419/query-service:5.18.0",
+    "teams_ui": "gcr.io/platform-services-297419/teams-ui:5.18.0"
+  },
+  "roles": {
+    "backend": {
+      "services": {
+        "pipelinesinfra": {
+          "backup_dir": "/var/lib/puppetlabs/cd4pe/backups",
+          "container": {
+            "extra_parameters": null,
+            "image": "gcr.io/platform-services-297419/cd4pe/continuous-delivery-for-puppet-enterprise:5.18.0",
+            "log_volume_name": "pipelinesinfra-logs",
+            "name": "pipelinesinfra"
+          },
+          "db_ca_cert_path": null,
+          "db_endpoint": null,
+          "db_host": null,
+          "db_password": "<sensitive>",
+          "db_port": null,
+          "db_username": "cd4pe",
+          "enable_ssl_webhooks": false,
+          "env_vars": {
+            "CD4PE_BOLT_PCP_READ_TIMEOUT_SEC": null,
+            "CD4PE_ENABLE_REPO_CACHING": null,
+            "CD4PE_EXTERNAL_WEBHOOK_URL": null,
+            "CD4PE_FAILED_LOGIN_ATTEMPT_PERIOD_IN_MINS": null,
+            "CD4PE_HTTP_CONNECTION_TIMEOUT_SEC": null,
+            "CD4PE_HTTP_READ_TIMEOUT_SEC": null,
+            "CD4PE_HTTP_REQUEST_TIMEOUT_SEC": null,
+            "CD4PE_HTTP_WRITE_TIMEOUT_SEC": null,
+            "CD4PE_INCLUDE_GIT_HISTORY_FOR_CD4PE_JOBS": null,
+            "CD4PE_JOB_GLOBAL_TIMEOUT_MINUTES": null,
+            "CD4PE_JOB_HTTP_READ_TIMEOUT_MINUTES": null,
+            "CD4PE_JOB_WEB_UI_ENDPOINT_OVERRIDE": null,
+            "CD4PE_LDAP_GROUP_SEARCH_SIZE_LIMIT": null,
+            "CD4PE_LOCKOUT_PERIOD_IN_MINS": null,
+            "CD4PE_MAX_LOGIN_ATTEMPTS": null,
+            "CD4PE_PIPELINES_DATA_KEEP_DAYS": null,
+            "CD4PE_PUPPET_DEV_TOOLS_REF": null,
+            "CD4PE_REPO_CACHE_RETRIEVAL_TIMEOUT_MINUTES": null,
+            "CD4PE_VALUE_REPORTING_DATA_KEEP_DAYS": null,
+            "CD4PE_WEBHOOK_URL": "http://cd4pe.fixture.test:8000",
+            "CD4PE_WEB_SESSION_IDLE_TIMEOUT_MINS": null,
+            "ENABLE_SSL_WEBHOOKS": false,
+            "PUPPETDB_CONNECTION_TIMEOUT_SEC": null
+          },
+          "java_args": "-Xmx1024M -Xms1024M",
+          "keep_log_files": 5,
+          "log_level": "info",
+          "max_log_size_mb": 200,
+          "resolvable_hostname": "cd4pe.fixture.test",
+          "root_password": "<sensitive>",
+          "root_username": "root@fixture.test",
+          "runtime": "docker",
+          "secret_key": "<sensitive>",
+          "secret_key_path": "/etc/puppetlabs/cd4pe/secret_key",
+          "webhook_port": 8000
+        },
+        "query": {
+          "container": {
+            "extra_parameters": null,
+            "image": "gcr.io/platform-services-297419/query-service:5.18.0",
+            "log_volume_name": "query-logs",
+            "name": "query"
+          },
+          "db_ca_cert_path": null,
+          "db_endpoint": null,
+          "db_host": null,
+          "db_password": "<sensitive>",
+          "db_port": null,
+          "db_username": "query",
+          "env_vars": {
+            "ENABLE_REPORT_TEMPLATES": null,
+            "QUERY_COMPLEXITY_LIMIT": null
+          },
+          "keep_log_files": 3,
+          "log_level": "DEBUG",
+          "max_log_size_mb": 100,
+          "resolvable_hostname": "cd4pe.fixture.test",
+          "runtime": "docker"
+        }
+      },
+      "targets": [
+        "aio"
+      ]
+    },
+    "database": {
+      "services": {
+        "postgres": {
+          "admin_db_password": "<sensitive>",
+          "admin_db_username": "postgres",
+          "cd4pe_db_password": "<sensitive>",
+          "cd4pe_db_username": "cd4pe",
+          "container": {
+            "extra_parameters": null,
+            "image": "gcr.io/platform-services-297419/cd4pe-postgresql:5.18.0",
+            "log_volume_name": "postgres-logs",
+            "name": "postgres"
+          },
+          "keep_log_files": 3,
+          "log_level": "ERROR",
+          "max_log_size_mb": 100,
+          "max_wal_size": "1GB",
+          "query_db_password": "<sensitive>",
+          "query_db_username": "query",
+          "repack_schedule": {
+            "hour": "0",
+            "minute": "0",
+            "month": "*",
+            "monthday": "*",
+            "weekday": "*"
+          },
+          "runtime": "docker"
+        }
+      },
+      "targets": [
+        "aio"
+      ]
+    },
+    "ui": {
+      "services": {
+        "ui": {
+          "console_log_level": "info",
+          "container": {
+            "extra_parameters": null,
+            "image": "gcr.io/platform-services-297419/teams-ui:5.18.0",
+            "log_volume_name": "ui-logs",
+            "name": "ui"
+          },
+          "enable_ssl_webhooks": false,
+          "keep_log_files": 3,
+          "max_log_size_mb": 100,
+          "nginx_proxy_timeout_secs": 300,
+          "runtime": "docker",
+          "teams_ui_version": "5.18.0",
+          "webhook_port": 8000
+        }
+      },
+      "targets": [
+        "aio"
+      ]
+    }
+  },
+  "runtime": "docker",
+  "ssl": {
+    "cert_chain": "fixture-cert-chain",
+    "crl": "fixture-crl",
+    "private_key": "<sensitive>"
+  }
+}

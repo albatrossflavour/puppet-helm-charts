@@ -1,0 +1,19 @@
+cd4peadm::config:
+  targets:
+    backend: [aio]
+    database: [aio]
+    ui: [aio]
+  admin_db_password: fixture-admin-db-password
+  cd4pe_db_username: cd4pe
+  cd4pe_db_password: fixture-cd4pe-db-password
+  query_db_username: query
+  query_db_password: fixture-query-db-password
+  resolvable_hostname: cd4pe.fixture.test
+  root_username: root@fixture.test
+  root_password: fixture-root-password
+  runtime: docker
+  secret_key: fixture-secret-key-16
+  ssl_cert_chain: fixture-cert-chain
+  ssl_crl: fixture-crl
+  ssl_private_key: fixture-private-key
+  java_args: "-Xmx1024M -Xms1024M"

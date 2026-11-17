@@ -1,0 +1,37 @@
+complyadm::config:
+  targets:
+    backend: [aio]
+    database: [aio]
+    ui: [aio]
+  admin_db_password: fixture-admin-db-password
+  comply_db_password: fixture-comply-db-password
+  identity_db_password: fixture-identity-db-password
+  resolvable_hostname: scm.fixture.test
+  runtime: docker
+  install_runtime: true
+  secret_key: fixture-secret-key-16
+  identity_account: fixture-identity-account
+  identity_account_console: fixture-identity-account-console
+  identity_admin_cli: fixture-identity-admin-cli
+  identity_broker: fixture-identity-broker
+  identity_realm_management: fixture-identity-realm-management
+  identity_security_admin_console: fixture-identity-security-admin-console
+  client_secret: fixture-client-secret
+  cookie_secret: fixture-cookie-secret
+  db_encryption_key: fixture-db-encryption-key
+  identity_admin_user: fixture-identity-admin-user
+  identity_admin_password: fixture-identity-admin-password
+  redis_password: fixture-redis-password
+  assessor_update_check_interval: 1h
+  data_retention_period: "0"
+  fact_update_check_interval: 24h
+  user_assessor_version: latest
+  hasura_admin_secret: fixture-hasura-admin-secret
+  pe: ""
+  log_level: info
+  ca_crt: fixture-ca-crt
+  tls_crt: fixture-tls-crt
+  tls_key: fixture-tls-key
+  cert_chain: fixture-cert-chain
+  private_key: fixture-private-key
+  crl: fixture-crl

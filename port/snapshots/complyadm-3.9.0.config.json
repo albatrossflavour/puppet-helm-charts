@@ -1,0 +1,586 @@
+{
+  "all_targets": [
+    "aio"
+  ],
+  "application_port": "443",
+  "assessor_version": "4.65.0",
+  "backup_dir": "/etc/puppetlabs/comply/backups",
+  "ca_crt": "fixture-ca-crt",
+  "dump_filename": "comply-postgres-<date>.dump",
+  "enable_healthchecks": true,
+  "image_registry": "gcr.io/platform-services-297419/compliance",
+  "images": {
+    "comply_assessor_upgrade": "gcr.io/platform-services-297419/compliance/scarp:v3.9.0",
+    "comply_frontdoor": "gcr.io/platform-services-297419/compliance/nginx:v3.9.0",
+    "comply_gatekeeper": "gcr.io/platform-services-297419/compliance/oauth2-proxy:v3.9.0",
+    "comply_graphql": "gcr.io/platform-services-297419/compliance/hasura-graphql-engine:v3.9.0",
+    "comply_graphql_init": "gcr.io/platform-services-297419/compliance/hasura-metadata:v3.9.0",
+    "comply_identity": "gcr.io/platform-services-297419/compliance/comply-identity:v3.9.0",
+    "comply_mtls_proxy": "gcr.io/platform-services-297419/compliance/nginx:v3.9.0",
+    "comply_postgres": "gcr.io/platform-services-297419/compliance/postgres:v3.9.0",
+    "comply_redis": "gcr.io/platform-services-297419/compliance/redis:v3.9.0",
+    "comply_scarpy": "gcr.io/platform-services-297419/compliance/scarp:v3.9.0",
+    "comply_scarpy_assessor_init": "gcr.io/platform-services-297419/compliance/comply-assessor:4.65.0",
+    "comply_scarpy_init": "gcr.io/platform-services-297419/compliance/scarp-init:v3.9.0",
+    "comply_ui": "gcr.io/platform-services-297419/compliance/comply-ui:v3.9.0",
+    "comply_ui_assessor_init": "gcr.io/platform-services-297419/compliance/comply-assessor:4.65.0"
+  },
+  "install_runtime": true,
+  "installation_dir": "/etc/puppetlabs/comply",
+  "installation_group": "root",
+  "installation_user": "root",
+  "pe": "",
+  "resolvable_hostname": "scm.fixture.test",
+  "roles": {
+    "backend": {
+      "services": {
+        "comply_assessor_upgrade": {
+          "container": {
+            "after": [
+              "comply_scarpy_init"
+            ],
+            "cmd": "env",
+            "env_secrets": {
+              "DB_ENCRYPTION_KEY": "db_encryption_key",
+              "DB_PASSWORD": "comply_db_password"
+            },
+            "env_vars": {
+              "ASSESSOR_VERSION": "4.65.0",
+              "DB_ENCRYPTION_KEY": "fixture-db-encryption-key",
+              "DB_PASSWORD": "fixture-comply-db-password",
+              "DB_USER": "comply",
+              "IDLE_CONNS_LTS": "1",
+              "MAX_IDLE_CONNS": "40",
+              "MAX_OPEN_CONNS": "80",
+              "POSTGRES_HOSTNAME": "comply_postgres",
+              "QUERY_API": "http://comply_graphql:8080/v1",
+              "SCARP_DEBUG_LEVEL": "info",
+              "UPGRADE_PE_AGENT_RUN": "false"
+            },
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "extra_systemd_parameters": {
+              "Service": {
+                "RemainAfterExit": "yes",
+                "Type": "simple"
+              }
+            },
+            "image": "gcr.io/platform-services-297419/compliance/scarp:v3.9.0",
+            "install_runtime": true,
+            "name": "comply_assessor_upgrade",
+            "net": "comply",
+            "runtime": "docker"
+          },
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "systemd_unit_dir": "/etc/systemd/system"
+        },
+        "comply_frontdoor": {
+          "admin_console_enabled": false,
+          "application_port": "443",
+          "cert_chain": "fixture-cert-chain",
+          "container": {
+            "env_vars": {},
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "extra_systemd_parameters": {
+              "Service": {
+                "NotifyAccess": "all",
+                "WatchdogSec": 20
+              }
+            },
+            "healthcheck": "timeout 3 /health/nginx_healthcheck.sh",
+            "image": "gcr.io/platform-services-297419/compliance/nginx:v3.9.0",
+            "install_runtime": true,
+            "name": "comply_frontdoor",
+            "net": "comply",
+            "ports": [
+              "443:8443",
+              "80:8080"
+            ],
+            "runtime": "docker"
+          },
+          "crl": "fixture-crl",
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "private_key": "fixture-private-key",
+          "systemd_unit_dir": "/etc/systemd/system"
+        },
+        "comply_gatekeeper": {
+          "application_port": "443",
+          "client_secret": "fixture-client-secret",
+          "container": {
+            "after": [
+              "comply_identity"
+            ],
+            "cmd": "--config=/run/secrets/oauth2_proxy.cfg",
+            "env_vars": {},
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "image": "gcr.io/platform-services-297419/compliance/oauth2-proxy:v3.9.0",
+            "install_runtime": true,
+            "mnt_secrets": {
+              "/run/secrets/oauth2_proxy.cfg": "oauth2_proxy.cfg"
+            },
+            "name": "comply_gatekeeper",
+            "net": "comply",
+            "runtime": "docker"
+          },
+          "cookie_secret": "fixture-cookie-secret",
+          "graphql": "comply_graphql",
+          "hostname": "scm.fixture.test",
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "scarpy": "comply_scarpy",
+          "systemd_unit_dir": "/etc/systemd/system",
+          "ui": "comply_ui"
+        },
+        "comply_graphql": {
+          "container": {
+            "after": null,
+            "env_secrets": {
+              "HASURA_GRAPHQL_ADMIN_SECRET": "hasura_admin_secret"
+            },
+            "env_vars": {
+              "HASURA_GRAPHQL_ADMIN_SECRET": "fixture-hasura-admin-secret",
+              "HASURA_GRAPHQL_AUTH_HOOK": "http://comply_scarpy:8088/api/hasura/auth",
+              "HASURA_GRAPHQL_CORS_DOMAIN": "https://scm.fixture.test",
+              "HASURA_GRAPHQL_DATABASE_URL": "postgres://comply:fixture-comply-db-password@comply_postgres:5432/comply",
+              "HASURA_GRAPHQL_DEV_MODE": "false",
+              "HASURA_GRAPHQL_ENABLE_CONSOLE": "true",
+              "HASURA_GRAPHQL_ENABLE_TELEMETRY": "false",
+              "HASURA_GRAPHQL_LOG_LEVEL": "info",
+              "HASURA_GRAPHQL_V1_BOOLEAN_NULL_COLLAPSE": "true",
+              "HASURA_SCARP_API_URL": "http://comply_scarpy:8088/api"
+            },
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "extra_systemd_parameters": {
+              "Service": {
+                "NotifyAccess": "all",
+                "WatchdogSec": 20
+              }
+            },
+            "healthcheck": "timeout 3 curl --fail --connect-timeout 3 -s localhost:8080/healthz",
+            "image": "gcr.io/platform-services-297419/compliance/hasura-graphql-engine:v3.9.0",
+            "install_runtime": true,
+            "name": "comply_graphql",
+            "net": "comply",
+            "runtime": "docker"
+          },
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "systemd_unit_dir": "/etc/systemd/system"
+        },
+        "comply_graphql_init": {
+          "container": {
+            "after": [
+              "comply_postgres",
+              "comply_scarpy_init",
+              "comply_graphql"
+            ],
+            "env_secrets": {
+              "DB_PASSWORD": "comply_db_password",
+              "HASURA_ADMIN_SECRET": "hasura_admin_secret"
+            },
+            "env_vars": {
+              "DB_PASSWORD": "fixture-comply-db-password",
+              "DB_USER": "comply",
+              "DESIRED_SCAN_ENDPOINT": "http://comply_scarpy:8088/api/v3/pe/task/ciscatscan/runScheduledScan",
+              "HASURA_ADMIN_SECRET": "fixture-hasura-admin-secret",
+              "HASURA_ENDPOINT": "http://comply_graphql:8080",
+              "POSTGRES_HOSTNAME": "comply_postgres",
+              "QUERY_API": "http://comply_graphql:8080/v1",
+              "SCARP_DEBUG_LEVEL": "info"
+            },
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "extra_systemd_parameters": {
+              "Service": {
+                "RemainAfterExit": "yes",
+                "Type": "simple"
+              }
+            },
+            "image": "gcr.io/platform-services-297419/compliance/hasura-metadata:v3.9.0",
+            "install_runtime": true,
+            "name": "comply_graphql_init",
+            "net": "comply",
+            "runtime": "docker"
+          },
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "systemd_unit_dir": "/etc/systemd/system"
+        },
+        "comply_identity": {
+          "access_token_lifespan": 300,
+          "application_port": "443",
+          "ca_crt": "fixture-ca-crt",
+          "client_secret": "fixture-client-secret",
+          "container": {
+            "after": [
+              "comply_postgres"
+            ],
+            "env_secrets": {
+              "COMPLY_DB_PASSWORD": "comply_db_password",
+              "DB_ENCRYPTION_KEY": "db_encryption_key",
+              "KC_BOOTSTRAP_ADMIN_PASSWORD": "identity_admin_password",
+              "KC_DB_PASSWORD": "identity_db_password"
+            },
+            "env_vars": {
+              "COMPLY_DB_CONNECTION": "jdbc:postgresql://comply_postgres/comply?ssl=false",
+              "COMPLY_DB_PASSWORD": "fixture-comply-db-password",
+              "COMPLY_DB_USER": "comply",
+              "DB_ENCRYPTION_KEY": "fixture-db-encryption-key",
+              "FEATURES": "cem_up_sell",
+              "JAVA_OPTS": "-Xms64m -Xmx512m",
+              "JDBC_PARAMS": "ssl=false",
+              "KC_BOOTSTRAP_ADMIN_PASSWORD": "fixture-identity-admin-password",
+              "KC_BOOTSTRAP_ADMIN_USERNAME": "fixture-identity-admin-user",
+              "KC_CACHE": "local",
+              "KC_DB": "postgres",
+              "KC_DB_PASSWORD": "fixture-identity-db-password",
+              "KC_DB_URL_HOST": "comply_postgres",
+              "KC_DB_USERNAME": "keycloak",
+              "KC_HEALTH_ENABLED": "true",
+              "KC_HOSTNAME": "scm.fixture.test",
+              "KC_HTTP_ENABLED": "true",
+              "KC_HTTP_RELATIVE_PATH": "/auth",
+              "KC_LOG_LEVEL": "info",
+              "KC_PROXY_HEADERS": "xforwarded",
+              "KC_TRUSTSTORE_PATHS": "/certs/cert_chain.pem",
+              "PROXY_ADDRESS_FORWARDING": "true",
+              "SIGN_OUT_URL": "https://scm.fixture.test/sign_out"
+            },
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "extra_systemd_parameters": {
+              "Service": {
+                "NotifyAccess": "all",
+                "WatchdogSec": 20
+              }
+            },
+            "healthcheck": "timeout 3 curl --fail -LI --connect-timeout 3 -s localhost:9000/auth/health/live",
+            "image": "gcr.io/platform-services-297419/compliance/comply-identity:v3.9.0",
+            "install_runtime": true,
+            "mnt_secrets": {
+              "/opt/keycloak/data/import/Puppet-realm.json": "Puppet_realm.json"
+            },
+            "name": "comply_identity",
+            "net": "comply",
+            "runtime": "docker"
+          },
+          "hostname": "scm.fixture.test",
+          "identity_account": "fixture-identity-account",
+          "identity_account_console": "fixture-identity-account-console",
+          "identity_admin_cli": "fixture-identity-admin-cli",
+          "identity_broker": "fixture-identity-broker",
+          "identity_realm_management": "fixture-identity-realm-management",
+          "identity_security_admin_console": "fixture-identity-security-admin-console",
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "sso_session_idle_timeout": 1800,
+          "systemd_unit_dir": "/etc/systemd/system"
+        },
+        "comply_mtls_proxy": {
+          "container": {
+            "env_vars": {},
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "extra_systemd_parameters": {
+              "Service": {
+                "NotifyAccess": "all",
+                "WatchdogSec": 20
+              }
+            },
+            "healthcheck": "timeout 3 /health/nginx_healthcheck.sh",
+            "image": "gcr.io/platform-services-297419/compliance/nginx:v3.9.0",
+            "install_runtime": true,
+            "name": "comply_mtls_proxy",
+            "net": "comply",
+            "ports": [
+              "30303:8080"
+            ],
+            "runtime": "docker"
+          },
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "pe_cert_checks_disabled": false,
+          "systemd_unit_dir": "/etc/systemd/system",
+          "tls_crt": "fixture-tls-crt",
+          "tls_key": "fixture-tls-key"
+        },
+        "comply_redis": {
+          "container": {
+            "cmd": "redis-server /usr/local/etc/redis/redis.conf",
+            "env_secrets": {
+              "REDIS_PASSWORD": "redis_password"
+            },
+            "env_vars": {
+              "REDIS_PASSWORD": "fixture-redis-password"
+            },
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "extra_systemd_parameters": {
+              "Service": {
+                "NotifyAccess": "all",
+                "WatchdogSec": 45
+              }
+            },
+            "healthcheck": "sh -c 'redis-cli -a $REDIS_PASSWORD --no-auth-warning -t 5 ping | grep -q PONG'",
+            "image": "gcr.io/platform-services-297419/compliance/redis:v3.9.0",
+            "install_runtime": true,
+            "name": "comply_redis",
+            "net": "comply",
+            "runtime": "docker"
+          },
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "systemd_unit_dir": "/etc/systemd/system"
+        },
+        "comply_scarpy": {
+          "ca_crt": "fixture-ca-crt",
+          "container": {
+            "after": [
+              "comply_assessor_upgrade",
+              "comply_redis"
+            ],
+            "cmd": "sh -c 'i=0; until [ -f /Assessor-CLI/.scarp-init-complete ] || [ $i -ge 300 ]; do sleep 1; i=$((i+1)); done; [ -f /Assessor-CLI/.scarp-init-complete ] || { echo \"timed out waiting for /Assessor-CLI/.scarp-init-complete\" >&2; exit 1; }; exec scarp api --unsafe'",
+            "env_secrets": {
+              "DB_ENCRYPTION_KEY": "db_encryption_key",
+              "DB_PASSWORD": "comply_db_password",
+              "HASURA_ADMIN_SECRET": "hasura_admin_secret",
+              "WS_REPORT_PROCESSOR_URL": "ws_report_processor_url"
+            },
+            "env_vars": {
+              "ASSESSOR_VERSION": "4.65.0",
+              "COMPLY_SERVER": "scm.fixture.test",
+              "DATA_RETENTION_PERIOD": "0",
+              "DB_ENCRYPTION_KEY": "fixture-db-encryption-key",
+              "DB_PASSWORD": "fixture-comply-db-password",
+              "DB_USER": "comply",
+              "DESIRED_SCAN_ENDPOINT": "http://comply_scarpy:8088/api/v3/pe/task/ciscatscan/runScheduledScan",
+              "FEATURES": "cem_up_sell",
+              "HASURA_ADMIN_SECRET": "fixture-hasura-admin-secret",
+              "INTROSPECTION_BLOCKED": true,
+              "MAX_GRAPHQL_BATCH_SIZE": 10,
+              "MAX_GRAPHQL_REQUESTS_LIMIT": 300,
+              "MAX_GRAPHQL_REQUESTS_WITHIN": 60,
+              "OIDC_ISSUER_URL": "http://comply_identity:8080/auth/realms/Puppet",
+              "POSTGRES_HOSTNAME": "comply_postgres",
+              "PROXY_IDLE_CONN_TIMEOUT": "90s",
+              "PROXY_RESPONSE_HEADER_TIMEOUT": "10s",
+              "PROXY_TLS_HANDSHAKE_TIMEOUT": "10s",
+              "QUERY_API": "http://comply_graphql:8080/v1",
+              "SCARP_DEBUG_LEVEL": "info",
+              "WS_PE_ASSESSOR_OUT_OF_DATE_POLLER_INTERVAL": "1h",
+              "WS_PE_UPDATE_FACTS_POLLER_INTERVAL": "24h",
+              "WS_REPORT_PROCESSOR_URL": "redis://:fixture-redis-password@comply_redis:6379/"
+            },
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "image": "gcr.io/platform-services-297419/compliance/scarp:v3.9.0",
+            "install_runtime": true,
+            "name": "comply_scarpy",
+            "net": "comply",
+            "runtime": "docker"
+          },
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "systemd_unit_dir": "/etc/systemd/system"
+        },
+        "comply_scarpy_assessor_init": {
+          "container": {
+            "cmd": "sh -c 'chmod o+w /Assessor-CLI && copy-benchmarks.sh'",
+            "env_vars": {
+              "ASSESSOR_VERSION": "4.65.0"
+            },
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "extra_systemd_parameters": {
+              "Service": {
+                "RemainAfterExit": "yes",
+                "Type": "simple"
+              }
+            },
+            "image": "gcr.io/platform-services-297419/compliance/comply-assessor:4.65.0",
+            "install_runtime": true,
+            "name": "comply_scarpy_assessor_init",
+            "net": "comply",
+            "runtime": "docker"
+          },
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "systemd_unit_dir": "/etc/systemd/system"
+        },
+        "comply_scarpy_init": {
+          "container": {
+            "after": [
+              "comply_postgres",
+              "comply_scarpy_assessor_init"
+            ],
+            "cmd": "sh -c 'rm -f /Assessor-CLI/.scarp-init-complete; i=0; until [ -f /Assessor-CLI/.copy-complete ] || [ $i -ge 60 ]; do sleep 1; i=$((i+1)); done; [ -f /Assessor-CLI/.copy-complete ] || { echo \"timed out waiting for /Assessor-CLI/.copy-complete\" >&2; exit 1; }; scarp init /Assessor-CLI/benchmarks && scarp upgrade-assessor && touch /Assessor-CLI/.scarp-init-complete'",
+            "env_secrets": {
+              "DB_ENCRYPTION_KEY": "db_encryption_key",
+              "DB_PASSWORD": "comply_db_password"
+            },
+            "env_vars": {
+              "ASSESSOR_VERSION": "4.65.0",
+              "DB_ENCRYPTION_KEY": "fixture-db-encryption-key",
+              "DB_PASSWORD": "fixture-comply-db-password",
+              "DB_USER": "comply",
+              "IDLE_CONNS_LTS": "1",
+              "MAX_IDLE_CONNS": "40",
+              "MAX_OPEN_CONNS": "80",
+              "POSTGRES_HOSTNAME": "comply_postgres",
+              "QUERY_API": "http://comply_graphql:8080/v1",
+              "SCARP_DEBUG_LEVEL": "info",
+              "UPGRADE_PE_AGENT_RUN": "false"
+            },
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "extra_systemd_parameters": {
+              "Service": {
+                "RemainAfterExit": "yes",
+                "Type": "simple"
+              }
+            },
+            "image": "gcr.io/platform-services-297419/compliance/scarp-init:v3.9.0",
+            "install_runtime": true,
+            "name": "comply_scarpy_init",
+            "net": "comply",
+            "runtime": "docker"
+          },
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "systemd_unit_dir": "/etc/systemd/system"
+        }
+      },
+      "targets": [
+        "aio"
+      ]
+    },
+    "database": {
+      "services": {
+        "comply_postgres": {
+          "admin_db_username": "postgres",
+          "comply_db_password": "fixture-comply-db-password",
+          "comply_db_username": "comply",
+          "container": {
+            "env_secrets": {
+              "POSTGRES_PASSWORD": "admin_db_password"
+            },
+            "env_vars": {
+              "PGDATA": "/bitnami/postgresql/data",
+              "POSTGRES_PASSWORD": "fixture-admin-db-password"
+            },
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "extra_systemd_parameters": {
+              "Service": {
+                "NotifyAccess": "all",
+                "WatchdogSec": 20
+              }
+            },
+            "healthcheck": "timeout 3 pg_isready -U comply -d comply -h 127.0.0.1 -p 5432",
+            "image": "gcr.io/platform-services-297419/compliance/postgres:v3.9.0",
+            "install_runtime": true,
+            "mnt_secrets": {
+              "/docker-entrypoint-initdb.d/initdb.sql": "initdb.sql"
+            },
+            "name": "comply_postgres",
+            "net": "comply",
+            "runtime": "docker"
+          },
+          "identity_db_password": "fixture-identity-db-password",
+          "identity_db_username": "keycloak",
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "log_level": "info",
+          "systemd_unit_dir": "/etc/systemd/system"
+        }
+      },
+      "targets": [
+        "aio"
+      ]
+    },
+    "ui": {
+      "services": {
+        "comply_ui": {
+          "container": {
+            "after": null,
+            "env_vars": {
+              "ASSESSOR_VERSION": "4.65.0",
+              "AUTH_PORT": "443",
+              "CHECK_UPDATES": "false",
+              "COMPLY_VERSION": "3.9.0",
+              "FEATURES": "cem_up_sell",
+              "HOST_FQDN": "scm.fixture.test",
+              "HTTPS_PORT": "443",
+              "LOGGING": "info",
+              "QUERY_API": "https://scm.fixture.test:443/v1/graphql",
+              "SCARP_API": "https://scm.fixture.test:443/api/"
+            },
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "image": "gcr.io/platform-services-297419/compliance/comply-ui:v3.9.0",
+            "install_runtime": true,
+            "name": "comply_ui",
+            "net": "comply",
+            "runtime": "docker"
+          },
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "systemd_unit_dir": "/etc/systemd/system"
+        },
+        "comply_ui_assessor_init": {
+          "container": {
+            "env_vars": {
+              "ASSESSOR_VERSION": "4.65.0"
+            },
+            "extra_parameters": "--log-driver=journald --log-opt tag=comply",
+            "extra_systemd_parameters": {
+              "Service": {
+                "RemainAfterExit": "yes",
+                "Type": "simple"
+              }
+            },
+            "image": "gcr.io/platform-services-297419/compliance/comply-assessor:4.65.0",
+            "install_runtime": true,
+            "name": "comply_ui_assessor_init",
+            "net": "comply",
+            "runtime": "docker"
+          },
+          "installation_dir": "/etc/puppetlabs/comply",
+          "installation_group": "root",
+          "installation_user": "root",
+          "systemd_unit_dir": "/etc/systemd/system"
+        }
+      },
+      "targets": [
+        "aio"
+      ]
+    }
+  },
+  "runtime": "docker",
+  "secrets": {
+    "Puppet_realm.json": "{\n  \"id\": \"Puppet\",\n  \"realm\": \"Puppet\",\n  \"notBefore\": 0,\n  \"revokeRefreshToken\": false,\n  \"refreshTokenMaxReuse\": 0,\n  \"accessTokenLifespan\": 300,\n  \"accessTokenLifespanForImplicitFlow\": 900,\n  \"ssoSessionIdleTimeout\":  1800,\n  \"ssoSessionMaxLifespan\": 36000,\n  \"ssoSessionIdleTimeoutRememberMe\": 0,\n  \"ssoSessionMaxLifespanRememberMe\": 0,\n  \"offlineSessionIdleTimeout\": 2592000,\n  \"offlineSessionMaxLifespanEnabled\": false,\n  \"offlineSessionMaxLifespan\": 5184000,\n  \"clientSessionIdleTimeout\": 0,\n  \"clientSessionMaxLifespan\": 0,\n  \"clientOfflineSessionIdleTimeout\": 0,\n  \"clientOfflineSessionMaxLifespan\": 0,\n  \"accessCodeLifespan\": 60,\n  \"accessCodeLifespanUserAction\": 300,\n  \"accessCodeLifespanLogin\": 1800,\n  \"actionTokenGeneratedByAdminLifespan\": 43200,\n  \"actionTokenGeneratedByUserLifespan\": 300,\n  \"enabled\": true,\n  \"sslRequired\": \"external\",\n  \"registrationAllowed\": false,\n  \"registrationEmailAsUsername\": false,\n  \"rememberMe\": false,\n  \"verifyEmail\": false,\n  \"loginWithEmailAllowed\": true,\n  \"duplicateEmailsAllowed\": false,\n  \"resetPasswordAllowed\": false,\n  \"editUsernameAllowed\": false,\n  \"bruteForceProtected\": true,\n  \"permanentLockout\": false,\n  \"maxFailureWaitSeconds\": 900,\n  \"minimumQuickLoginWaitSeconds\": 60,\n  \"waitIncrementSeconds\": 900,\n  \"quickLoginCheckMilliSeconds\": 1000,\n  \"maxDeltaTimeSeconds\": 43200,\n  \"failureFactor\": 3,\n  \"roles\": {\n    \"realm\": [{\n        \"id\": \"d23f8aa9-a2e1-48ab-95e8-89eb6a854fc3\",\n        \"name\": \"offline_access\",\n        \"description\": \"${role_offline-access}\",\n        \"composite\": false,\n        \"clientRole\": false,\n        \"containerId\": \"Puppet\",\n        \"attributes\": {}\n      },\n      {\n        \"id\": \"68debd89-502c-44e6-a537-a967e1c0feda\",\n        \"name\": \"uma_authorization\",\n        \"description\": \"${role_uma_authorization}\",\n        \"composite\": false,\n        \"clientRole\": false,\n        \"containerId\": \"Puppet\",\n        \"attributes\": {}\n      }\n    ],\n    \"client\": {\n      \"realm-management\": [{\n          \"id\": \"383b6a66-72eb-4bcd-bb50-f4e8a2fb344e\",\n          \"name\": \"query-realms\",\n          \"description\": \"${role_query-realms}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"bf798397-351d-4e9c-bbee-2d7f369c366e\",\n          \"name\": \"manage-identity-providers\",\n          \"description\": \"${role_manage-identity-providers}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"6bd2c312-20d3-4c33-b6da-fe54907d8e4a\",\n          \"name\": \"view-events\",\n          \"description\": \"${role_view-events}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"fcde90b0-9d65-4fe3-a03c-e6a76482fe4d\",\n          \"name\": \"view-identity-providers\",\n          \"description\": \"${role_view-identity-providers}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"a1ec7173-02da-4870-8656-b583cfa17f98\",\n          \"name\": \"manage-users\",\n          \"description\": \"${role_manage-users}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"c6f58507-0845-481c-8dee-38ccde7b236f\",\n          \"name\": \"manage-clients\",\n          \"description\": \"${role_manage-clients}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"3bed5b4b-373d-4580-bb73-54035800d382\",\n          \"name\": \"view-realm\",\n          \"description\": \"${role_view-realm}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"a11e729c-2a1c-48ff-8186-e4f3b02e073c\",\n          \"name\": \"query-clients\",\n          \"description\": \"${role_query-clients}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"ce428b4a-7ce0-47dd-b664-498d307ed52b\",\n          \"name\": \"query-groups\",\n          \"description\": \"${role_query-groups}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"d0069e28-f106-4b5d-9cc7-363ca5035122\",\n          \"name\": \"impersonation\",\n          \"description\": \"${role_impersonation}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"ae77fb2c-a937-4281-b6a5-0e1f2ab0c679\",\n          \"name\": \"manage-events\",\n          \"description\": \"${role_manage-events}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"a21d1c77-785d-4ea3-be2e-8e960941c02a\",\n          \"name\": \"view-clients\",\n          \"description\": \"${role_view-clients}\",\n          \"composite\": true,\n          \"composites\": {\n            \"client\": {\n              \"realm-management\": [\n                \"query-clients\"\n              ]\n            }\n          },\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"0c2c0969-68d5-4cfa-bde7-a54693615555\",\n          \"name\": \"view-users\",\n          \"description\": \"${role_view-users}\",\n          \"composite\": true,\n          \"composites\": {\n            \"client\": {\n              \"realm-management\": [\n                \"query-groups\",\n                \"query-users\"\n              ]\n            }\n          },\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"9369bb1a-c0fc-449c-a1a2-88157b63b6d2\",\n          \"name\": \"view-authorization\",\n          \"description\": \"${role_view-authorization}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"c969ed3a-9a6f-4565-b417-596eeb703ba5\",\n          \"name\": \"manage-realm\",\n          \"description\": \"${role_manage-realm}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"86e5a957-4d91-4e10-8487-4af2a3ccad3d\",\n          \"name\": \"query-users\",\n          \"description\": \"${role_query-users}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"eaca1d47-e84c-4eab-9880-f961879ff06b\",\n          \"name\": \"realm-admin\",\n          \"description\": \"${role_realm-admin}\",\n          \"composite\": true,\n          \"composites\": {\n            \"client\": {\n              \"realm-management\": [\n                \"query-realms\",\n                \"manage-identity-providers\",\n                \"view-events\",\n                \"view-identity-providers\",\n                \"manage-users\",\n                \"manage-clients\",\n                \"view-realm\",\n                \"query-clients\",\n                \"query-groups\",\n                \"impersonation\",\n                \"manage-events\",\n                \"view-clients\",\n                \"view-users\",\n                \"view-authorization\",\n                \"manage-realm\",\n                \"query-users\",\n                \"create-client\",\n                \"manage-authorization\"\n              ]\n            }\n          },\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"d1601b17-9098-4835-9069-809d1d77aeca\",\n          \"name\": \"create-client\",\n          \"description\": \"${role_create-client}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"6f28ae62-ff51-4d07-a173-8683884a24d7\",\n          \"name\": \"manage-authorization\",\n          \"description\": \"${role_manage-authorization}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n          \"attributes\": {}\n        }\n      ],\n      \"comply\": [],\n      \"security-admin-console\": [],\n      \"admin-cli\": [],\n      \"account-console\": [],\n      \"broker\": [{\n        \"id\": \"79758adf-0430-44cc-9086-51dafbe93308\",\n        \"name\": \"read-token\",\n        \"description\": \"${role_read-token}\",\n        \"composite\": false,\n        \"clientRole\": true,\n        \"containerId\": \"d9e59ba9-cacc-4f5b-a837-41658442d670\",\n        \"attributes\": {}\n      }],\n      \"account\": [{\n          \"id\": \"1cb343ff-fffd-4d61-8fca-da4fd993db51\",\n          \"name\": \"manage-consent\",\n          \"description\": \"${role_manage-consent}\",\n          \"composite\": true,\n          \"composites\": {\n            \"client\": {\n              \"account\": [\n                \"view-consent\"\n              ]\n            }\n          },\n          \"clientRole\": true,\n          \"containerId\": \"9f093c5f-15aa-43f5-98f7-3ff91cc5be39\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"a1368560-c08d-4ee4-b1d2-57b30863c6d4\",\n          \"name\": \"view-profile\",\n          \"description\": \"${role_view-profile}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"9f093c5f-15aa-43f5-98f7-3ff91cc5be39\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"cade9973-f775-493c-9353-2393d08462b0\",\n          \"name\": \"view-applications\",\n          \"description\": \"${role_view-applications}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"9f093c5f-15aa-43f5-98f7-3ff91cc5be39\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"60b5c851-3af5-4620-b1b1-455b28ef804e\",\n          \"name\": \"manage-account\",\n          \"description\": \"${role_manage-account}\",\n          \"composite\": true,\n          \"composites\": {\n            \"client\": {\n              \"account\": [\n                \"manage-account-links\"\n              ]\n            }\n          },\n          \"clientRole\": true,\n          \"containerId\": \"9f093c5f-15aa-43f5-98f7-3ff91cc5be39\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"979ee780-0d91-4a74-ab77-fb81c55b6a9a\",\n          \"name\": \"manage-account-links\",\n          \"description\": \"${role_manage-account-links}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"9f093c5f-15aa-43f5-98f7-3ff91cc5be39\",\n          \"attributes\": {}\n        },\n        {\n          \"id\": \"e2141030-d825-4ac6-8550-d47a5ae6d306\",\n          \"name\": \"view-consent\",\n          \"description\": \"${role_view-consent}\",\n          \"composite\": false,\n          \"clientRole\": true,\n          \"containerId\": \"9f093c5f-15aa-43f5-98f7-3ff91cc5be39\",\n          \"attributes\": {}\n        }\n      ]\n    }\n  },\n  \"groups\": [{\n    \"id\": \"7cc2cf3a-e35b-458f-8507-e7812e34ed50\",\n    \"name\": \"Member\",\n    \"path\": \"/Member\",\n    \"attributes\": {},\n    \"realmRoles\": [\n      \"uma_authorization\",\n      \"offline_access\"\n    ],\n    \"clientRoles\": {},\n    \"subGroups\": []\n  }],\n  \"defaultRoles\": [\n    \"uma_authorization\",\n    \"offline_access\"\n  ],\n  \"requiredCredentials\": [\n    \"password\"\n  ],\n  \"passwordPolicy\": \"hashAlgorithm(pbkdf2-sha256) and hashIterations(30000) and length(12) and notUsername(undefined) and passwordHistory(3)\",\n  \"otpPolicyType\": \"totp\",\n  \"otpPolicyAlgorithm\": \"HmacSHA1\",\n  \"otpPolicyInitialCounter\": 0,\n  \"otpPolicyDigits\": 6,\n  \"otpPolicyLookAheadWindow\": 1,\n  \"otpPolicyPeriod\": 30,\n  \"otpSupportedApplications\": [\n    \"FreeOTP\",\n    \"Google Authenticator\"\n  ],\n  \"webAuthnPolicyRpEntityName\": \"keycloak\",\n  \"webAuthnPolicySignatureAlgorithms\": [\n    \"ES256\"\n  ],\n  \"webAuthnPolicyRpId\": \"\",\n  \"webAuthnPolicyAttestationConveyancePreference\": \"not specified\",\n  \"webAuthnPolicyAuthenticatorAttachment\": \"not specified\",\n  \"webAuthnPolicyRequireResidentKey\": \"not specified\",\n  \"webAuthnPolicyUserVerificationRequirement\": \"not specified\",\n  \"webAuthnPolicyCreateTimeout\": 0,\n  \"webAuthnPolicyAvoidSameAuthenticatorRegister\": false,\n  \"webAuthnPolicyAcceptableAaguids\": [],\n  \"webAuthnPolicyPasswordlessRpEntityName\": \"keycloak\",\n  \"webAuthnPolicyPasswordlessSignatureAlgorithms\": [\n    \"ES256\"\n  ],\n  \"webAuthnPolicyPasswordlessRpId\": \"\",\n  \"webAuthnPolicyPasswordlessAttestationConveyancePreference\": \"not specified\",\n  \"webAuthnPolicyPasswordlessAuthenticatorAttachment\": \"not specified\",\n  \"webAuthnPolicyPasswordlessRequireResidentKey\": \"not specified\",\n  \"webAuthnPolicyPasswordlessUserVerificationRequirement\": \"not specified\",\n  \"webAuthnPolicyPasswordlessCreateTimeout\": 0,\n  \"webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister\": false,\n  \"webAuthnPolicyPasswordlessAcceptableAaguids\": [],\n  \"users\": [{\n    \"id\": \"df5b3d65-3c1d-4d79-90ba-2c70d69d96ec\",\n    \"createdTimestamp\": 1600858001112,\n    \"username\": \"comply\",\n    \"enabled\": true,\n    \"totp\": false,\n    \"emailVerified\": false,\n    \"credentials\": [{\n      \"id\": \"29312cc4-eb6e-43e7-befb-328b4f308940\",\n      \"type\": \"password\",\n      \"createdDate\": 1600858012173,\n      \"secretData\": \"{\\\"value\\\":\\\"9d1miB+gy2Z7qSubbfCM2gGiLAlGxRT1ZP8p/v1Ha9Fl1+wRRO9tAkJatxyBY/4HyCJmTchvxJltJ6roXckQ9g==\\\",\\\"salt\\\":\\\"cDYBK6wiLD8bOl5toulACg==\\\"}\",\n      \"credentialData\": \"{\\\"hashIterations\\\":27500,\\\"algorithm\\\":\\\"pbkdf2-sha256\\\"}\"\n    }],\n    \"disableableCredentialTypes\": [],\n    \"requiredActions\": [\n      \"UPDATE_PASSWORD\"\n    ],\n    \"realmRoles\": [\n      \"uma_authorization\",\n      \"offline_access\"\n    ],\n    \"clientRoles\": {\n      \"account\": [\n        \"view-profile\",\n        \"manage-account\"\n      ]\n    },\n    \"notBefore\": 0,\n    \"groups\": [\n      \"/Member\"\n    ]\n    },\n    {\n        \"id\": \"456ba839-3466-435c-95d8-7c1c99d2458d\",\n        \"createdTimestamp\": 1601895126928,\n        \"username\": \"service-account-comply\",\n        \"enabled\": true,\n        \"totp\": false,\n        \"emailVerified\": true,\n        \"serviceAccountClientId\": \"comply\",\n        \"credentials\": [],\n        \"disableableCredentialTypes\": [],\n        \"requiredActions\": [],\n        \"realmRoles\": [\n            \"uma_authorization\",\n            \"offline_access\"\n        ],\n        \"clientRoles\": {\n            \"account\": [\n                \"view-profile\",\n                \"manage-account\"\n            ]\n        },\n        \"notBefore\": 0,\n        \"groups\": []\n  }],\n  \"scopeMappings\": [{\n    \"clientScope\": \"offline_access\",\n    \"roles\": [\n      \"offline_access\"\n    ]\n  }],\n  \"clientScopeMappings\": {\n    \"account\": [{\n      \"client\": \"account-console\",\n      \"roles\": [\n        \"manage-account\"\n      ]\n    }]\n  },\n  \"clients\": [{\n      \"id\": \"9f093c5f-15aa-43f5-98f7-3ff91cc5be39\",\n      \"clientId\": \"account\",\n      \"name\": \"${client_account}\",\n      \"rootUrl\": \"${authBaseUrl}\",\n      \"baseUrl\": \"/realms/Puppet/account/\",\n      \"surrogateAuthRequired\": false,\n      \"enabled\": true,\n      \"alwaysDisplayInConsole\": false,\n      \"clientAuthenticatorType\": \"client-secret\",\n      \"secret\": \"fixture-identity-account\",\n      \"defaultRoles\": [\n        \"manage-account\",\n        \"view-profile\"\n      ],\n      \"redirectUris\": [\n        \"/realms/Puppet/account/*\"\n      ],\n      \"webOrigins\": [],\n      \"notBefore\": 0,\n      \"bearerOnly\": false,\n      \"consentRequired\": false,\n      \"standardFlowEnabled\": true,\n      \"implicitFlowEnabled\": false,\n      \"directAccessGrantsEnabled\": false,\n      \"serviceAccountsEnabled\": false,\n      \"publicClient\": false,\n      \"frontchannelLogout\": false,\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {},\n      \"authenticationFlowBindingOverrides\": {},\n      \"fullScopeAllowed\": false,\n      \"nodeReRegistrationTimeout\": 0,\n      \"defaultClientScopes\": [\n        \"web-origins\",\n        \"role_list\",\n        \"roles\",\n        \"profile\",\n        \"email\"\n      ],\n      \"optionalClientScopes\": [\n        \"address\",\n        \"phone\",\n        \"offline_access\",\n        \"microprofile-jwt\"\n      ]\n    },\n    {\n      \"id\": \"a59082fd-0b9a-4512-ad32-eeaa50094539\",\n      \"clientId\": \"account-console\",\n      \"name\": \"${client_account-console}\",\n      \"rootUrl\": \"${authBaseUrl}\",\n      \"baseUrl\": \"/realms/Puppet/account/\",\n      \"surrogateAuthRequired\": false,\n      \"enabled\": true,\n      \"alwaysDisplayInConsole\": false,\n      \"clientAuthenticatorType\": \"client-secret\",\n      \"secret\": \"fixture-identity-account-console\",\n      \"redirectUris\": [\n        \"/realms/Puppet/account/*\"\n      ],\n      \"webOrigins\": [],\n      \"notBefore\": 0,\n      \"bearerOnly\": false,\n      \"consentRequired\": false,\n      \"standardFlowEnabled\": true,\n      \"implicitFlowEnabled\": false,\n      \"directAccessGrantsEnabled\": false,\n      \"serviceAccountsEnabled\": false,\n      \"publicClient\": true,\n      \"frontchannelLogout\": false,\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {\n        \"pkce.code.challenge.method\": \"S256\"\n      },\n      \"authenticationFlowBindingOverrides\": {},\n      \"fullScopeAllowed\": false,\n      \"nodeReRegistrationTimeout\": 0,\n      \"protocolMappers\": [{\n        \"id\": \"7e131a5a-61d1-45dd-bb18-a3d684212a68\",\n        \"name\": \"audience resolve\",\n        \"protocol\": \"openid-connect\",\n        \"protocolMapper\": \"oidc-audience-resolve-mapper\",\n        \"consentRequired\": false,\n        \"config\": {}\n      }],\n      \"defaultClientScopes\": [\n        \"web-origins\",\n        \"role_list\",\n        \"roles\",\n        \"profile\",\n        \"email\"\n      ],\n      \"optionalClientScopes\": [\n        \"address\",\n        \"phone\",\n        \"offline_access\",\n        \"microprofile-jwt\"\n      ]\n    },\n    {\n      \"id\": \"393fe004-cb4f-4a22-9147-767a67765f6d\",\n      \"clientId\": \"admin-cli\",\n      \"name\": \"${client_admin-cli}\",\n      \"surrogateAuthRequired\": false,\n      \"enabled\": true,\n      \"alwaysDisplayInConsole\": false,\n      \"clientAuthenticatorType\": \"client-secret\",\n      \"secret\": \"fixture-identity-admin-cli\",\n      \"redirectUris\": [],\n      \"webOrigins\": [],\n      \"notBefore\": 0,\n      \"bearerOnly\": false,\n      \"consentRequired\": false,\n      \"standardFlowEnabled\": false,\n      \"implicitFlowEnabled\": false,\n      \"directAccessGrantsEnabled\": true,\n      \"serviceAccountsEnabled\": false,\n      \"publicClient\": true,\n      \"frontchannelLogout\": false,\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {},\n      \"authenticationFlowBindingOverrides\": {},\n      \"fullScopeAllowed\": false,\n      \"nodeReRegistrationTimeout\": 0,\n      \"defaultClientScopes\": [\n        \"web-origins\",\n        \"role_list\",\n        \"roles\",\n        \"profile\",\n        \"email\"\n      ],\n      \"optionalClientScopes\": [\n        \"address\",\n        \"phone\",\n        \"offline_access\",\n        \"microprofile-jwt\"\n      ]\n    },\n    {\n      \"id\": \"d9e59ba9-cacc-4f5b-a837-41658442d670\",\n      \"clientId\": \"broker\",\n      \"name\": \"${client_broker}\",\n      \"surrogateAuthRequired\": false,\n      \"enabled\": true,\n      \"alwaysDisplayInConsole\": false,\n      \"clientAuthenticatorType\": \"client-secret\",\n      \"secret\": \"fixture-identity-broker\",\n      \"redirectUris\": [],\n      \"webOrigins\": [],\n      \"notBefore\": 0,\n      \"bearerOnly\": false,\n      \"consentRequired\": false,\n      \"standardFlowEnabled\": true,\n      \"implicitFlowEnabled\": false,\n      \"directAccessGrantsEnabled\": false,\n      \"serviceAccountsEnabled\": false,\n      \"publicClient\": false,\n      \"frontchannelLogout\": false,\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {},\n      \"authenticationFlowBindingOverrides\": {},\n      \"fullScopeAllowed\": false,\n      \"nodeReRegistrationTimeout\": 0,\n      \"defaultClientScopes\": [\n        \"web-origins\",\n        \"role_list\",\n        \"roles\",\n        \"profile\",\n        \"email\"\n      ],\n      \"optionalClientScopes\": [\n        \"address\",\n        \"phone\",\n        \"offline_access\",\n        \"microprofile-jwt\"\n      ]\n    },\n    {\n      \"id\": \"d53ab44e-4720-4305-ab3b-d45e025ccfe0\",\n      \"clientId\": \"comply\",\n      \"rootUrl\": \"\",\n      \"adminUrl\": \"\",\n      \"baseUrl\": \"https://scm.fixture.test:443/\",\n      \"surrogateAuthRequired\": false,\n      \"enabled\": true,\n      \"alwaysDisplayInConsole\": false,\n      \"clientAuthenticatorType\": \"client-secret\",\n      \"secret\":  \"fixture-client-secret\",\n      \"redirectUris\": [\n        \"https://scm.fixture.test:443/oauth2/callback\"\n      ],\n      \"webOrigins\": [\n        \"https://scm.fixture.test:443\"\n      ],\n      \"notBefore\": 0,\n      \"bearerOnly\": false,\n      \"consentRequired\": false,\n      \"standardFlowEnabled\": true,\n      \"implicitFlowEnabled\": false,\n      \"directAccessGrantsEnabled\": true,\n      \"serviceAccountsEnabled\": true,\n      \"publicClient\": false,\n      \"frontchannelLogout\": false,\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {\n        \"saml.assertion.signature\": \"false\",\n        \"saml.force.post.binding\": \"false\",\n        \"saml.multivalued.roles\": \"false\",\n        \"saml.encrypt\": \"false\",\n        \"saml.server.signature\": \"false\",\n        \"saml.server.signature.keyinfo.ext\": \"false\",\n        \"exclude.session.state.from.auth.response\": \"false\",\n        \"saml_force_name_id_format\": \"false\",\n        \"saml.client.signature\": \"false\",\n        \"tls.client.certificate.bound.access.tokens\": \"false\",\n        \"saml.authnstatement\": \"false\",\n        \"display.on.consent.screen\": \"false\",\n        \"saml.onetimeuse.condition\": \"false\"\n      },\n      \"authenticationFlowBindingOverrides\": {},\n      \"fullScopeAllowed\": true,\n      \"nodeReRegistrationTimeout\": -1,\n      \"protocolMappers\": [\n        {\n            \"id\": \"60f9ac30-c2cb-4d21-84e7-82ffa12c7de3\",\n            \"name\": \"Client IP Address\",\n            \"protocol\": \"openid-connect\",\n            \"protocolMapper\": \"oidc-usersessionmodel-note-mapper\",\n            \"consentRequired\": false,\n            \"config\": {\n                \"user.session.note\": \"clientAddress\",\n                \"id.token.claim\": \"true\",\n                \"access.token.claim\": \"true\",\n                \"claim.name\": \"clientAddress\",\n                \"jsonType.label\": \"String\"\n            }\n        },\n        {\n            \"id\": \"0344b34e-39fd-483d-a601-b800d4a47f16\",\n            \"name\": \"Client Host\",\n            \"protocol\": \"openid-connect\",\n            \"protocolMapper\": \"oidc-usersessionmodel-note-mapper\",\n            \"consentRequired\": false,\n            \"config\": {\n                \"user.session.note\": \"clientHost\",\n                \"id.token.claim\": \"true\",\n                \"access.token.claim\": \"true\",\n                \"claim.name\": \"clientHost\",\n                \"jsonType.label\": \"String\"\n            }\n        },\n        {\n            \"id\": \"052a8e12-99d3-42b7-a2bb-a57c5ca6b79c\",\n            \"name\": \"Client ID\",\n            \"protocol\": \"openid-connect\",\n            \"protocolMapper\": \"oidc-usersessionmodel-note-mapper\",\n            \"consentRequired\": false,\n            \"config\": {\n                \"user.session.note\": \"clientId\",\n                \"id.token.claim\": \"true\",\n                \"access.token.claim\": \"true\",\n                \"claim.name\": \"clientId\",\n                \"jsonType.label\": \"String\"\n            }\n        }\n      ],\n      \"defaultClientScopes\": [\n        \"web-origins\",\n        \"role_list\",\n        \"roles\",\n        \"profile\",\n        \"email\"\n      ],\n      \"optionalClientScopes\": [\n        \"address\",\n        \"phone\",\n        \"offline_access\",\n        \"microprofile-jwt\"\n      ]\n    },\n    {\n      \"id\": \"68c6e336-1717-4ae4-90be-6f714def88cb\",\n      \"clientId\": \"realm-management\",\n      \"name\": \"${client_realm-management}\",\n      \"surrogateAuthRequired\": false,\n      \"enabled\": true,\n      \"alwaysDisplayInConsole\": false,\n      \"clientAuthenticatorType\": \"client-secret\",\n      \"secret\": \"fixture-identity-realm-management\",\n      \"redirectUris\": [],\n      \"webOrigins\": [],\n      \"notBefore\": 0,\n      \"bearerOnly\": true,\n      \"consentRequired\": false,\n      \"standardFlowEnabled\": true,\n      \"implicitFlowEnabled\": false,\n      \"directAccessGrantsEnabled\": false,\n      \"serviceAccountsEnabled\": false,\n      \"publicClient\": false,\n      \"frontchannelLogout\": false,\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {},\n      \"authenticationFlowBindingOverrides\": {},\n      \"fullScopeAllowed\": false,\n      \"nodeReRegistrationTimeout\": 0,\n      \"defaultClientScopes\": [\n        \"web-origins\",\n        \"role_list\",\n        \"roles\",\n        \"profile\",\n        \"email\"\n      ],\n      \"optionalClientScopes\": [\n        \"address\",\n        \"phone\",\n        \"offline_access\",\n        \"microprofile-jwt\"\n      ]\n    },\n    {\n      \"id\": \"fead018d-ee00-4b2e-927f-89f1d9b09466\",\n      \"clientId\": \"security-admin-console\",\n      \"name\": \"${client_security-admin-console}\",\n      \"rootUrl\": \"${authAdminUrl}\",\n      \"baseUrl\": \"/admin/Puppet/console/\",\n      \"surrogateAuthRequired\": false,\n      \"enabled\": true,\n      \"alwaysDisplayInConsole\": false,\n      \"clientAuthenticatorType\": \"client-secret\",\n      \"secret\": \"fixture-identity-security-admin-console\",\n      \"redirectUris\": [\n        \"/admin/Puppet/console/*\"\n      ],\n      \"webOrigins\": [\n        \"+\"\n      ],\n      \"notBefore\": 0,\n      \"bearerOnly\": false,\n      \"consentRequired\": false,\n      \"standardFlowEnabled\": true,\n      \"implicitFlowEnabled\": false,\n      \"directAccessGrantsEnabled\": false,\n      \"serviceAccountsEnabled\": false,\n      \"publicClient\": true,\n      \"frontchannelLogout\": false,\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {\n        \"pkce.code.challenge.method\": \"S256\"\n      },\n      \"authenticationFlowBindingOverrides\": {},\n      \"fullScopeAllowed\": false,\n      \"nodeReRegistrationTimeout\": 0,\n      \"protocolMappers\": [{\n        \"id\": \"a5e48469-d435-4fa8-b6e3-5051a9b9ee8d\",\n        \"name\": \"locale\",\n        \"protocol\": \"openid-connect\",\n        \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n        \"consentRequired\": false,\n        \"config\": {\n          \"userinfo.token.claim\": \"true\",\n          \"user.attribute\": \"locale\",\n          \"id.token.claim\": \"true\",\n          \"access.token.claim\": \"true\",\n          \"claim.name\": \"locale\",\n          \"jsonType.label\": \"String\"\n        }\n      }],\n      \"defaultClientScopes\": [\n        \"web-origins\",\n        \"role_list\",\n        \"roles\",\n        \"profile\",\n        \"email\"\n      ],\n      \"optionalClientScopes\": [\n        \"address\",\n        \"phone\",\n        \"offline_access\",\n        \"microprofile-jwt\"\n      ]\n    }\n  ],\n  \"clientScopes\": [{\n      \"id\": \"61a222b4-646d-435c-ad8c-b58f9ae2c2c5\",\n      \"name\": \"address\",\n      \"description\": \"OpenID Connect built-in scope: address\",\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {\n        \"include.in.token.scope\": \"true\",\n        \"display.on.consent.screen\": \"true\",\n        \"consent.screen.text\": \"${addressScopeConsentText}\"\n      },\n      \"protocolMappers\": [{\n        \"id\": \"e3cdee41-b8f6-4c3d-891f-00e1fb55e3b7\",\n        \"name\": \"address\",\n        \"protocol\": \"openid-connect\",\n        \"protocolMapper\": \"oidc-address-mapper\",\n        \"consentRequired\": false,\n        \"config\": {\n          \"user.attribute.formatted\": \"formatted\",\n          \"user.attribute.country\": \"country\",\n          \"user.attribute.postal_code\": \"postal_code\",\n          \"userinfo.token.claim\": \"true\",\n          \"user.attribute.street\": \"street\",\n          \"id.token.claim\": \"true\",\n          \"user.attribute.region\": \"region\",\n          \"access.token.claim\": \"true\",\n          \"user.attribute.locality\": \"locality\"\n        }\n      }]\n    },\n    {\n      \"id\": \"e275137a-affa-495a-acea-de5b1dc69043\",\n      \"name\": \"email\",\n      \"description\": \"OpenID Connect built-in scope: email\",\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {\n        \"include.in.token.scope\": \"true\",\n        \"display.on.consent.screen\": \"true\",\n        \"consent.screen.text\": \"${emailScopeConsentText}\"\n      },\n      \"protocolMappers\": [{\n          \"id\": \"b47ab26e-5d64-4b3e-bf28-d0636d8fd75a\",\n          \"name\": \"email verified\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-property-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"emailVerified\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"email_verified\",\n            \"jsonType.label\": \"boolean\"\n          }\n        },\n        {\n          \"id\": \"d1f3542c-e3b9-42b1-a76a-4cdee7f67148\",\n          \"name\": \"email\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-property-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"email\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"email\",\n            \"jsonType.label\": \"String\"\n          }\n        }\n      ]\n    },\n    {\n      \"id\": \"bfc9ac36-1d2f-4134-b359-e9e1daaa6f3f\",\n      \"name\": \"microprofile-jwt\",\n      \"description\": \"Microprofile - JWT built-in scope\",\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {\n        \"include.in.token.scope\": \"true\",\n        \"display.on.consent.screen\": \"false\"\n      },\n      \"protocolMappers\": [{\n          \"id\": \"0d8f10a8-c5d3-4a0a-be8a-c19e9058b4d3\",\n          \"name\": \"upn\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-property-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"username\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"upn\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"3cc42e64-a4e0-43a2-bf6d-ce9d803e36d7\",\n          \"name\": \"groups\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-realm-role-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"multivalued\": \"true\",\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"foo\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"groups\",\n            \"jsonType.label\": \"String\"\n          }\n        }\n      ]\n    },\n    {\n      \"id\": \"ee7a014d-1cd8-49a8-9b63-6619742bb2ea\",\n      \"name\": \"offline_access\",\n      \"description\": \"OpenID Connect built-in scope: offline_access\",\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {\n        \"consent.screen.text\": \"${offlineAccessScopeConsentText}\",\n        \"display.on.consent.screen\": \"true\"\n      }\n    },\n    {\n      \"id\": \"418a2848-36ac-491b-af54-7b4a04704c48\",\n      \"name\": \"phone\",\n      \"description\": \"OpenID Connect built-in scope: phone\",\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {\n        \"include.in.token.scope\": \"true\",\n        \"display.on.consent.screen\": \"true\",\n        \"consent.screen.text\": \"${phoneScopeConsentText}\"\n      },\n      \"protocolMappers\": [{\n          \"id\": \"4a54e91c-d141-47ca-9a8a-469791931720\",\n          \"name\": \"phone number\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"phoneNumber\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"phone_number\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"04f31f7a-1288-4700-9113-9c29d3b05659\",\n          \"name\": \"phone number verified\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"phoneNumberVerified\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"phone_number_verified\",\n            \"jsonType.label\": \"boolean\"\n          }\n        }\n      ]\n    },\n    {\n      \"id\": \"df06aab6-2145-4122-b578-e3ac24c8f4d5\",\n      \"name\": \"profile\",\n      \"description\": \"OpenID Connect built-in scope: profile\",\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {\n        \"include.in.token.scope\": \"true\",\n        \"display.on.consent.screen\": \"true\",\n        \"consent.screen.text\": \"${profileScopeConsentText}\"\n      },\n      \"protocolMappers\": [{\n          \"id\": \"ab2ae0f1-a600-4dd8-86e8-58bd56d5cba2\",\n          \"name\": \"family name\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-property-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"lastName\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"family_name\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"0483d9b7-e827-4219-b12d-91fca60a86c2\",\n          \"name\": \"given name\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-property-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"firstName\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"given_name\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"0193daf2-3fc3-4c27-92da-3045b35eebc5\",\n          \"name\": \"website\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"website\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"website\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"80cda3da-8c15-4e64-abf1-a04d354a43fe\",\n          \"name\": \"zoneinfo\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"zoneinfo\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"zoneinfo\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"d28558c3-f84f-42e6-b536-4e8313b3ada4\",\n          \"name\": \"nickname\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"nickname\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"nickname\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"3b0f1ecf-1f96-42eb-aa2b-5d184c246869\",\n          \"name\": \"middle name\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"middleName\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"middle_name\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"339ff673-353b-4421-b2fa-4cdb4b036899\",\n          \"name\": \"username\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-property-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"username\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"preferred_username\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"80f8f63f-0324-4020-8f24-14fe7f0d54cf\",\n          \"name\": \"profile\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"profile\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"profile\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"4a566fbe-2825-44ae-9b78-225b832c9d92\",\n          \"name\": \"birthdate\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"birthdate\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"birthdate\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"d1f13628-bacc-429c-936a-f05bf2ff98c9\",\n          \"name\": \"locale\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"locale\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"locale\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"b25259b3-1c92-413f-b613-4071c2dcf1d9\",\n          \"name\": \"gender\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"gender\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"gender\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"026e97ea-20f7-4355-af8f-f64c69f1b2d5\",\n          \"name\": \"updated at\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"updatedAt\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"updated_at\",\n            \"jsonType.label\": \"String\"\n          }\n        },\n        {\n          \"id\": \"a5b9f95b-4f30-4c3b-bbb5-582f949a6522\",\n          \"name\": \"full name\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-full-name-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"userinfo.token.claim\": \"true\"\n          }\n        },\n        {\n          \"id\": \"0bca4d97-ba03-46d2-8985-0acdcb9e4eb6\",\n          \"name\": \"picture\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-attribute-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"userinfo.token.claim\": \"true\",\n            \"user.attribute\": \"picture\",\n            \"id.token.claim\": \"true\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"picture\",\n            \"jsonType.label\": \"String\"\n          }\n        }\n      ]\n    },\n    {\n      \"id\": \"f21aa5dc-520c-48c2-812b-cd99922d4570\",\n      \"name\": \"role_list\",\n      \"description\": \"SAML role list\",\n      \"protocol\": \"saml\",\n      \"attributes\": {\n        \"consent.screen.text\": \"${samlRoleListScopeConsentText}\",\n        \"display.on.consent.screen\": \"true\"\n      },\n      \"protocolMappers\": [{\n        \"id\": \"9257fbf7-1e87-4b01-9233-39fca5addb54\",\n        \"name\": \"role list\",\n        \"protocol\": \"saml\",\n        \"protocolMapper\": \"saml-role-list-mapper\",\n        \"consentRequired\": false,\n        \"config\": {\n          \"single\": \"false\",\n          \"attribute.nameformat\": \"Basic\",\n          \"attribute.name\": \"Role\"\n        }\n      }]\n    },\n    {\n      \"id\": \"5ad07167-e89b-41b3-aa7c-a33ba7dcc0bd\",\n      \"name\": \"roles\",\n      \"description\": \"OpenID Connect scope for add user roles to the access token\",\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {\n        \"include.in.token.scope\": \"false\",\n        \"display.on.consent.screen\": \"true\",\n        \"consent.screen.text\": \"${rolesScopeConsentText}\"\n      },\n      \"protocolMappers\": [{\n          \"id\": \"76ba4d93-0c20-4fdf-8117-de1ea125bb8d\",\n          \"name\": \"audience resolve\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-audience-resolve-mapper\",\n          \"consentRequired\": false,\n          \"config\": {}\n        },\n        {\n          \"id\": \"c7fab24f-69a8-44f8-b678-d06e2aeb04b4\",\n          \"name\": \"client roles\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-client-role-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"user.attribute\": \"foo\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"resource_access.${client_id}.roles\",\n            \"jsonType.label\": \"String\",\n            \"multivalued\": \"true\"\n          }\n        },\n        {\n          \"id\": \"397513ec-84ef-4fc4-b639-57414e50963a\",\n          \"name\": \"realm roles\",\n          \"protocol\": \"openid-connect\",\n          \"protocolMapper\": \"oidc-usermodel-realm-role-mapper\",\n          \"consentRequired\": false,\n          \"config\": {\n            \"user.attribute\": \"foo\",\n            \"access.token.claim\": \"true\",\n            \"claim.name\": \"realm_access.roles\",\n            \"jsonType.label\": \"String\",\n            \"multivalued\": \"true\"\n          }\n        }\n      ]\n    },\n    {\n      \"id\": \"4082607b-ce71-470f-bb7b-1770d403e11c\",\n      \"name\": \"web-origins\",\n      \"description\": \"OpenID Connect scope for add allowed web origins to the access token\",\n      \"protocol\": \"openid-connect\",\n      \"attributes\": {\n        \"include.in.token.scope\": \"false\",\n        \"display.on.consent.screen\": \"false\",\n        \"consent.screen.text\": \"\"\n      },\n      \"protocolMappers\": [{\n        \"id\": \"39cf1305-40ce-44e6-af5f-cac1bc471c5a\",\n        \"name\": \"allowed web origins\",\n        \"protocol\": \"openid-connect\",\n        \"protocolMapper\": \"oidc-allowed-origins-mapper\",\n        \"consentRequired\": false,\n        \"config\": {}\n      }]\n    }\n  ],\n  \"defaultDefaultClientScopes\": [\n    \"role_list\",\n    \"profile\",\n    \"email\",\n    \"roles\",\n    \"web-origins\"\n  ],\n  \"defaultOptionalClientScopes\": [\n    \"offline_access\",\n    \"address\",\n    \"phone\",\n    \"microprofile-jwt\"\n  ],\n  \"browserSecurityHeaders\": {\n    \"contentSecurityPolicyReportOnly\": \"\",\n    \"xContentTypeOptions\": \"nosniff\",\n    \"xRobotsTag\": \"none\",\n    \"xFrameOptions\": \"SAMEORIGIN\",\n    \"contentSecurityPolicy\": \"frame-src 'self'; frame-ancestors 'self'; object-src 'none';\",\n    \"xXSSProtection\": \"1; mode=block\",\n    \"strictTransportSecurity\": \"max-age=31536000; includeSubDomains\"\n  },\n  \"smtpServer\": {},\n  \"loginTheme\": \"puppet\",\n  \"accountTheme\": \"puppet\",\n  \"adminTheme\": \"puppet\",\n  \"emailTheme\": \"puppet\",\n  \"eventsEnabled\": false,\n  \"eventsListeners\": [\n    \"jboss-logging\"\n  ],\n  \"enabledEventTypes\": [],\n  \"adminEventsEnabled\": false,\n  \"adminEventsDetailsEnabled\": false,\n  \"components\": {\n    \"org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy\": [{\n        \"id\": \"f4d740a2-b317-47c7-b794-8d20e1d002aa\",\n        \"name\": \"Allowed Protocol Mapper Types\",\n        \"providerId\": \"allowed-protocol-mappers\",\n        \"subType\": \"anonymous\",\n        \"subComponents\": {},\n        \"config\": {\n          \"allowed-protocol-mapper-types\": [\n              \"oidc-usermodel-attribute-mapper\",\n              \"saml-role-list-mapper\",\n              \"saml-user-attribute-mapper\",\n              \"oidc-full-name-mapper\",\n              \"oidc-address-mapper\",\n              \"oidc-sha256-pairwise-sub-mapper\",\n              \"oidc-usermodel-property-mapper\",\n              \"saml-user-property-mapper\"\n          ]\n        }\n      },\n      {\n        \"id\": \"296f4240-5b93-478d-9084-eed6267af830\",\n        \"name\": \"Consent Required\",\n        \"providerId\": \"consent-required\",\n        \"subType\": \"anonymous\",\n        \"subComponents\": {},\n        \"config\": {}\n      },\n      {\n        \"id\": \"ea2b49ed-730f-486d-b697-6c348848a4c4\",\n        \"name\": \"Max Clients Limit\",\n        \"providerId\": \"max-clients\",\n        \"subType\": \"anonymous\",\n        \"subComponents\": {},\n        \"config\": {\n          \"max-clients\": [\n            \"200\"\n          ]\n        }\n      },\n      {\n        \"id\": \"05aedba3-289f-4fe3-b591-fa98b08ad0b1\",\n        \"name\": \"Full Scope Disabled\",\n        \"providerId\": \"scope\",\n        \"subType\": \"anonymous\",\n        \"subComponents\": {},\n        \"config\": {}\n      },\n      {\n        \"id\": \"be7effca-47b7-4990-9b3e-89261fe7790d\",\n        \"name\": \"Allowed Protocol Mapper Types\",\n        \"providerId\": \"allowed-protocol-mappers\",\n        \"subType\": \"authenticated\",\n        \"subComponents\": {},\n        \"config\": {\n            \"allowed-protocol-mapper-types\": [\n                \"saml-user-attribute-mapper\",\n                \"saml-role-list-mapper\",\n                \"saml-user-property-mapper\",\n                \"oidc-usermodel-property-mapper\",\n                \"oidc-full-name-mapper\",\n                \"oidc-address-mapper\",\n                \"oidc-usermodel-attribute-mapper\",\n                \"oidc-sha256-pairwise-sub-mapper\"\n            ]\n        }\n      },\n      {\n        \"id\": \"ec8980fa-8d43-4986-a34a-63b3dfb21f73\",\n        \"name\": \"Allowed Client Scopes\",\n        \"providerId\": \"allowed-client-templates\",\n        \"subType\": \"anonymous\",\n        \"subComponents\": {},\n        \"config\": {\n          \"allow-default-scopes\": [\n            \"true\"\n          ]\n        }\n      },\n      {\n        \"id\": \"871ecbeb-b037-45d8-b773-502bbb1e0a1f\",\n        \"name\": \"Trusted Hosts\",\n        \"providerId\": \"trusted-hosts\",\n        \"subType\": \"anonymous\",\n        \"subComponents\": {},\n        \"config\": {\n          \"host-sending-registration-request-must-match\": [\n            \"true\"\n          ],\n          \"client-uris-must-match\": [\n            \"true\"\n          ]\n        }\n      },\n      {\n        \"id\": \"c55c09b8-b7d2-42fd-a727-20bbcccd3bdb\",\n        \"name\": \"Allowed Client Scopes\",\n        \"providerId\": \"allowed-client-templates\",\n        \"subType\": \"authenticated\",\n        \"subComponents\": {},\n        \"config\": {\n          \"allow-default-scopes\": [\n            \"true\"\n          ]\n        }\n      }\n    ],\n    \"org.keycloak.keys.KeyProvider\": [{\n        \"id\": \"e6652608-ecaa-4dba-b965-d3682ef5abfe\",\n        \"name\": \"aes-generated\",\n        \"providerId\": \"aes-generated\",\n        \"subComponents\": {},\n        \"config\": {\n          \"kid\": [\n            \"3ce2c782-e89f-4132-9944-dadae43dc29e\"\n          ],\n          \"secret\": [\n            \"NWNklICGGonBeTxq0hirGQ\"\n          ],\n          \"priority\": [\n            \"100\"\n          ]\n        }\n      },\n      {\n        \"id\": \"b2a7d7ea-71ea-4392-a378-11ec114cd0fc\",\n        \"name\": \"rsa-generated\",\n        \"providerId\": \"rsa-generated\",\n        \"subComponents\": {},\n        \"config\": {\n          \"privateKey\": [\n            \"MIIEowIBAAKCAQEAxEwNXtGXpJ/7ZY+dZHR/W+uuWQrUdQvoG+S8+QC5090PLZw91hxgug5dJ18MJA9mKvzI+d1ALPBnh0Ob/SaT0MTaIrfhci3gtrSc3hlQRBpck960H59s+/hZ3gzXWynF21crcVoEZtIIQ72u6abGhaOjDXjSdDwof96rmrk6+MnLa515qWysLuoeCgE4Ge7UIXY2b3m9DBCFSUdkM92txCMSFp0piXS5+WFEE27yw5tH/nGr4gSOO87wI7Mi4eRwHY7DjWvmyfVYx8Fz9X3ktTu7MD1E6G7PHcBnM+d3tU7qAuiB6yEhUddgCzG2ncyeP8PQ1L23S0myVx4P0DXI1QIDAQABAoIBACrX7pMja9WilVw1XETwqFuHtSX6FyT01FRCOHygi+6R8R4jW9u/ld0GBY7yT9QPCF2ZjsP6ZmdokTAUsZcvNFP8ox+wwqQJH2LBSPuwyrQSjOI5WVcNlNvp+LNeWiKrm2OkQvcajptifCtM20BkBjBk5tGp7UUxXCWMlCfRBe4GuyN0u4+vuThPHzKTVCt0VOP+UgNpdrDR5Fx9HnOlevb/1nY6ssklwvKYsamZXJQYSFJsHawZbWz9ksKfV6EnMsMPKvhFZQfp4CHkCKZJUIyVWe4lks3B894BOGz/PajPanah14+3ff5oi1+0ObzFS8VeK/lXoWi04oFf8OA9toECgYEA8OfQEsj7nDvHg6JWvC7t+7brUud5AOLlQVYDxztcPbrgPmD++lPACc7QsdMkgLRQ/YHXFuNYFuKRUjkrEQpDswKbeEkKFL/uR5s2AZZAi0DUlANsZm/XLPlg0yz5DVOnVvREKPacW9QElHlCT1jsn4K9Cs7fKrQJZ6IV57x3gjcCgYEA0Ji1XaJjKG6wyVYnNqRof8iyAv/HkeH/7u6n7WwfPkYPnXrlCeo9691TycM+TuI+5qTmdsfaZg1yT3OoPoErjNB2w/mjKEec+OjkBxdUa/ZNQ79wEIX3PxCGHvC+sK4pzoKuZvVlBvX5kG8B2O78ekCSNCJwrvJ8ObNFHAwJd1MCgYB7qPLlAagufX0fs/BD7u8Ye7/2MX2ql83IqQeNeIoT4d6EBrQ7+UulfTUhYtnk+yprxv+K7y5jqO+hvli+CX/Q3vDBYPS8y/zbYu/pBqChGqlERTGar6RLoMM0A2zgi2VlvENUp6qBdKbZNBl2s5XbF3hEmQZzXDFLsib+an8KJwKBgQC6T1rWWd7k0xDVkzyNAoVPdMsCAMCYXNoB52lXltXFAkCaMJT3qR9LVrCqqdcyD8OMr8YkW1aHBgWOT0f7I9Xo/JzHZ2XB6UybyS854i2GDERweUE3kOAHlNOmOPKozbYLfA8XaKCmefZAedWVk8cvzhKHvCcXKv+nbaYRafLefwKBgDcNXRcoD6aqKg8fbpc3J7LJ21xQdzf/GAGuCOFlX0bNS/Bz5G6DZLfhhBxHfxCFLtA04dXTjRFwzaAMAl7Kf3bTdSuHRsUCyM3lTnAd7iXod2oQzXuYYg/xgoxm9fJMos+2JFdrhj5iYXY81cUPzZQpbgSIuliUqzT/T+UFVINk\"\n          ],\n          \"certificate\": [\n            \"MIICmzCCAYMCBgF0tfvwfDANBgkqhkiG9w0BAQsFADARMQ8wDQYDVQQDDAZQdXBwZXQwHhcNMjAwOTIyMTMyMjAxWhcNMzAwOTIyMTMyMzQxWjARMQ8wDQYDVQQDDAZQdXBwZXQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDETA1e0Zekn/tlj51kdH9b665ZCtR1C+gb5Lz5ALnT3Q8tnD3WHGC6Dl0nXwwkD2Yq/Mj53UAs8GeHQ5v9JpPQxNoit+FyLeC2tJzeGVBEGlyT3rQfn2z7+FneDNdbKcXbVytxWgRm0ghDva7ppsaFo6MNeNJ0PCh/3quauTr4yctrnXmpbKwu6h4KATgZ7tQhdjZveb0MEIVJR2Qz3a3EIxIWnSmJdLn5YUQTbvLDm0f+caviBI47zvAjsyLh5HAdjsONa+bJ9VjHwXP1feS1O7swPUTobs8dwGcz53e1TuoC6IHrISFR12ALMbadzJ4/w9DUvbdLSbJXHg/QNcjVAgMBAAEwDQYJKoZIhvcNAQELBQADggEBAL2JR1jRsN9Ts0jA3cK6HR5jggxpZlnLSuMKFY21hb7ZhRXy8HhM2L8muzYNmltrhnVcQQUDyVwnKPf3LDDKzDN9S1WUek1zXbQfUozI/HFt6EWJIVur0HPwWLGBkEdTo45JsXV2qvD8JJiehyv01Lh6gkqA3fb5mxCwxGo22A+4ZTBWiW/k8WawF2eyK22bzS0HkbolqrAtLbS8Lj4hKMIOs+JfXYzs3oWvSCD153IUrwsFaOInoqx68tWESY5Rz34jGRwlpRcj0nkxNZZuvY3TRFf2hWBzY4hbKbHPo+SILhYeoC15aSRR+ZdCOYVKrr1ILuAnMa7PjNFyo5LMgE4=\"\n          ],\n          \"priority\": [\n            \"100\"\n          ]\n        }\n      },\n      {\n        \"id\": \"53a344a3-0172-41fa-aecd-e5a86b2527d0\",\n        \"name\": \"hmac-generated\",\n        \"providerId\": \"hmac-generated\",\n        \"subComponents\": {},\n        \"config\": {\n          \"kid\": [\n            \"4719c23c-6616-4c47-8f5e-61de8f3a915b\"\n          ],\n          \"secret\": [\n            \"OkFnp4U7DdqxgnNkRTDMSxe0dfqTMfdLzpJycBocJQwOHkjFwgknwcaC2JzkdZv_aPSW1vFZHd05h2KemnDzmg\"\n          ],\n          \"priority\": [\n            \"100\"\n          ],\n          \"algorithm\": [\n            \"HS256\"\n          ]\n        }\n      }\n    ]\n  },\n  \"internationalizationEnabled\": false,\n  \"supportedLocales\": [\n    \"\"\n  ],\n  \"authenticationFlows\": [{\n      \"id\": \"7daa103d-4bc3-4398-9816-4903c54b2e95\",\n      \"alias\": \"Account verification options\",\n      \"description\": \"Method with which to verity the existing account\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": false,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"idp-email-verification\",\n          \"requirement\": \"ALTERNATIVE\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"requirement\": \"ALTERNATIVE\",\n          \"priority\": 20,\n          \"flowAlias\": \"Verify Existing Account by Re-authentication\",\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": true\n        }\n      ]\n    },\n    {\n      \"id\": \"28b36b2a-9722-4b5d-b27d-d4d390e639c3\",\n      \"alias\": \"Authentication Options\",\n      \"description\": \"Authentication options.\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": false,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"basic-auth\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"basic-auth-otp\",\n          \"requirement\": \"DISABLED\",\n          \"priority\": 20,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"auth-spnego\",\n          \"requirement\": \"DISABLED\",\n          \"priority\": 30,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        }\n      ]\n    },\n    {\n      \"id\": \"673e0ae2-c64a-48b9-88c8-5b002c5f798a\",\n      \"alias\": \"Browser - Conditional OTP\",\n      \"description\": \"Flow to determine if the OTP is required for the authentication\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": false,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"conditional-user-configured\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"auth-otp-form\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 20,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        }\n      ]\n    },\n    {\n      \"id\": \"2b1e7c91-8285-49bf-8975-f7f94069d972\",\n      \"alias\": \"Direct Grant - Conditional OTP\",\n      \"description\": \"Flow to determine if the OTP is required for the authentication\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": false,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"conditional-user-configured\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"direct-grant-validate-otp\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 20,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        }\n      ]\n    },\n    {\n      \"id\": \"c00a3aa5-6727-4c12-a1d7-a55c500cc16e\",\n      \"alias\": \"First broker login - Conditional OTP\",\n      \"description\": \"Flow to determine if the OTP is required for the authentication\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": false,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"conditional-user-configured\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"auth-otp-form\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 20,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        }\n      ]\n    },\n    {\n      \"id\": \"9d85b277-a75a-43fb-bcba-7663c20248b2\",\n      \"alias\": \"Handle Existing Account\",\n      \"description\": \"Handle what to do if there is existing account with same email/username like authenticated identity provider\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": false,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"idp-confirm-link\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 20,\n          \"flowAlias\": \"Account verification options\",\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": true\n        }\n      ]\n    },\n    {\n      \"id\": \"7563c8ad-63dc-4a1e-b2fc-c3a4fbf81f73\",\n      \"alias\": \"Reset - Conditional OTP\",\n      \"description\": \"Flow to determine if the OTP should be reset or not. Set to REQUIRED to force.\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": false,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"conditional-user-configured\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"reset-otp\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 20,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        }\n      ]\n    },\n    {\n      \"id\": \"83c5f228-7d5a-4704-a065-356bfe3e61d7\",\n      \"alias\": \"User creation or linking\",\n      \"description\": \"Flow for the existing/non-existing user alternatives\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": false,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticatorConfig\": \"create unique user config\",\n          \"authenticator\": \"idp-create-user-if-unique\",\n          \"requirement\": \"ALTERNATIVE\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"requirement\": \"ALTERNATIVE\",\n          \"priority\": 20,\n          \"flowAlias\": \"Handle Existing Account\",\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": true\n        }\n      ]\n    },\n    {\n      \"id\": \"f494c95d-b28d-44e8-a648-5786097972e6\",\n      \"alias\": \"Verify Existing Account by Re-authentication\",\n      \"description\": \"Reauthentication of existing account\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": false,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"idp-username-password-form\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"requirement\": \"CONDITIONAL\",\n          \"priority\": 20,\n          \"flowAlias\": \"First broker login - Conditional OTP\",\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": true\n        }\n      ]\n    },\n    {\n      \"id\": \"89ee41c6-a8bd-476a-a199-54759c951a33\",\n      \"alias\": \"browser\",\n      \"description\": \"browser based authentication\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": true,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"auth-cookie\",\n          \"requirement\": \"ALTERNATIVE\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"auth-spnego\",\n          \"requirement\": \"DISABLED\",\n          \"priority\": 20,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"identity-provider-redirector\",\n          \"requirement\": \"ALTERNATIVE\",\n          \"priority\": 25,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"requirement\": \"ALTERNATIVE\",\n          \"priority\": 30,\n          \"flowAlias\": \"forms\",\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": true\n        }\n      ]\n    },\n    {\n      \"id\": \"a487332a-633d-42d7-bff7-c6fd2869e353\",\n      \"alias\": \"clients\",\n      \"description\": \"Base authentication for clients\",\n      \"providerId\": \"client-flow\",\n      \"topLevel\": true,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"client-secret\",\n          \"requirement\": \"ALTERNATIVE\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"client-jwt\",\n          \"requirement\": \"ALTERNATIVE\",\n          \"priority\": 20,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"client-secret-jwt\",\n          \"requirement\": \"ALTERNATIVE\",\n          \"priority\": 30,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"client-x509\",\n          \"requirement\": \"ALTERNATIVE\",\n          \"priority\": 40,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        }\n      ]\n    },\n    {\n      \"id\": \"f8d3ed2c-e700-4903-b163-72fea03ea242\",\n      \"alias\": \"direct grant\",\n      \"description\": \"OpenID Connect Resource Owner Grant\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": true,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"direct-grant-validate-username\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"direct-grant-validate-password\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 20,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"requirement\": \"CONDITIONAL\",\n          \"priority\": 30,\n          \"flowAlias\": \"Direct Grant - Conditional OTP\",\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": true\n        }\n      ]\n    },\n    {\n      \"id\": \"f5f77098-1d25-480e-9c97-14aafb17b8e8\",\n      \"alias\": \"docker auth\",\n      \"description\": \"Used by Docker clients to authenticate against the IDP\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": true,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n        \"authenticator\": \"docker-http-basic-authenticator\",\n        \"requirement\": \"REQUIRED\",\n        \"priority\": 10,\n        \"userSetupAllowed\": false,\n        \"autheticatorFlow\": false\n      }]\n    },\n    {\n      \"id\": \"ae5bdf1a-f759-4da7-9cba-d30bf8d24882\",\n      \"alias\": \"first broker login\",\n      \"description\": \"Actions taken after first broker login with identity provider account, which is not yet linked to any Keycloak account\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": true,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticatorConfig\": \"review profile config\",\n          \"authenticator\": \"idp-review-profile\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 20,\n          \"flowAlias\": \"User creation or linking\",\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": true\n        }\n      ]\n    },\n    {\n      \"id\": \"46c3dd52-75a6-4706-b122-7aa1f908cf28\",\n      \"alias\": \"forms\",\n      \"description\": \"Username, password, otp and other auth forms.\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": false,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"auth-username-password-form\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"requirement\": \"CONDITIONAL\",\n          \"priority\": 20,\n          \"flowAlias\": \"Browser - Conditional OTP\",\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": true\n        }\n      ]\n    },\n    {\n      \"id\": \"30f97a49-9c46-4e47-80be-58f514f986b7\",\n      \"alias\": \"http challenge\",\n      \"description\": \"An authentication flow based on challenge-response HTTP Authentication Schemes\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": true,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"no-cookie-redirect\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 20,\n          \"flowAlias\": \"Authentication Options\",\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": true\n        }\n      ]\n    },\n    {\n      \"id\": \"9a59860c-9c9b-4883-8bd1-4cea9460b3e2\",\n      \"alias\": \"registration\",\n      \"description\": \"registration flow\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": true,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n        \"authenticator\": \"registration-page-form\",\n        \"requirement\": \"REQUIRED\",\n        \"priority\": 10,\n        \"flowAlias\": \"registration form\",\n        \"userSetupAllowed\": false,\n        \"autheticatorFlow\": true\n      }]\n    },\n    {\n      \"id\": \"4542bf14-83b3-445b-9723-757a67056437\",\n      \"alias\": \"registration form\",\n      \"description\": \"registration form\",\n      \"providerId\": \"form-flow\",\n      \"topLevel\": false,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"registration-user-creation\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 20,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"registration-profile-action\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 40,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"registration-password-action\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 50,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"registration-recaptcha-action\",\n          \"requirement\": \"DISABLED\",\n          \"priority\": 60,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        }\n      ]\n    },\n    {\n      \"id\": \"de078a8f-ae41-448b-a50e-22151c4cd5f8\",\n      \"alias\": \"reset credentials\",\n      \"description\": \"Reset credentials for a user if they forgot their password or something\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": true,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n          \"authenticator\": \"reset-credentials-choose-user\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 10,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"reset-credential-email\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 20,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"authenticator\": \"reset-password\",\n          \"requirement\": \"REQUIRED\",\n          \"priority\": 30,\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": false\n        },\n        {\n          \"requirement\": \"CONDITIONAL\",\n          \"priority\": 40,\n          \"flowAlias\": \"Reset - Conditional OTP\",\n          \"userSetupAllowed\": false,\n          \"autheticatorFlow\": true\n        }\n      ]\n    },\n    {\n      \"id\": \"b7a63f95-9280-4179-8e9c-345a0e74d5e6\",\n      \"alias\": \"saml ecp\",\n      \"description\": \"SAML ECP Profile Authentication Flow\",\n      \"providerId\": \"basic-flow\",\n      \"topLevel\": true,\n      \"builtIn\": true,\n      \"authenticationExecutions\": [{\n        \"authenticator\": \"http-basic-authenticator\",\n        \"requirement\": \"REQUIRED\",\n        \"priority\": 10,\n        \"userSetupAllowed\": false,\n        \"autheticatorFlow\": false\n      }]\n    }\n  ],\n  \"authenticatorConfig\": [{\n      \"id\": \"1d1cac72-7012-4e9c-be58-127618312109\",\n      \"alias\": \"create unique user config\",\n      \"config\": {\n        \"require.password.update.after.registration\": \"false\"\n      }\n    },\n    {\n      \"id\": \"1b0324d7-7f4c-4ac7-8b60-cbf317b45cd1\",\n      \"alias\": \"review profile config\",\n      \"config\": {\n        \"update.profile.on.first.login\": \"missing\"\n      }\n    }\n  ],\n  \"requiredActions\": [{\n      \"alias\": \"CONFIGURE_TOTP\",\n      \"name\": \"Configure OTP\",\n      \"providerId\": \"CONFIGURE_TOTP\",\n      \"enabled\": true,\n      \"defaultAction\": false,\n      \"priority\": 10,\n      \"config\": {}\n    },\n    {\n      \"alias\": \"terms_and_conditions\",\n      \"name\": \"Terms and Conditions\",\n      \"providerId\": \"terms_and_conditions\",\n      \"enabled\": false,\n      \"defaultAction\": false,\n      \"priority\": 20,\n      \"config\": {}\n    },\n    {\n      \"alias\": \"UPDATE_PASSWORD\",\n      \"name\": \"Update Password\",\n      \"providerId\": \"UPDATE_PASSWORD\",\n      \"enabled\": true,\n      \"defaultAction\": false,\n      \"priority\": 30,\n      \"config\": {}\n    },\n    {\n      \"alias\": \"UPDATE_PROFILE\",\n      \"name\": \"Update Profile\",\n      \"providerId\": \"UPDATE_PROFILE\",\n      \"enabled\": true,\n      \"defaultAction\": false,\n      \"priority\": 40,\n      \"config\": {}\n    },\n    {\n      \"alias\": \"VERIFY_EMAIL\",\n      \"name\": \"Verify Email\",\n      \"providerId\": \"VERIFY_EMAIL\",\n      \"enabled\": true,\n      \"defaultAction\": false,\n      \"priority\": 50,\n      \"config\": {}\n    },\n    {\n      \"alias\": \"update_user_locale\",\n      \"name\": \"Update User Locale\",\n      \"providerId\": \"update_user_locale\",\n      \"enabled\": true,\n      \"defaultAction\": false,\n      \"priority\": 1000,\n      \"config\": {}\n    }\n  ],\n  \"browserFlow\": \"browser\",\n  \"registrationFlow\": \"registration\",\n  \"directGrantFlow\": \"direct grant\",\n  \"resetCredentialsFlow\": \"reset credentials\",\n  \"clientAuthenticationFlow\": \"clients\",\n  \"dockerAuthenticationFlow\": \"docker auth\",\n  \"attributes\": {\n    \"clientSessionIdleTimeout\": \"0\",\n    \"clientSessionMaxLifespan\": \"0\"\n  },\n  \"keycloakVersion\": \"10.0.2\",\n  \"userManagedAccessAllowed\": false\n}\n",
+    "admin_db_password": "fixture-admin-db-password",
+    "comply_db_password": "fixture-comply-db-password",
+    "db_encryption_key": "fixture-db-encryption-key",
+    "hasura_admin_secret": "fixture-hasura-admin-secret",
+    "identity_admin_password": "fixture-identity-admin-password",
+    "identity_db_password": "fixture-identity-db-password",
+    "initdb.sql": "CREATE USER comply WITH SUPERUSER PASSWORD 'fixture-comply-db-password';\nCREATE DATABASE comply;\nGRANT ALL PRIVILEGES ON DATABASE comply TO comply;\n\nCREATE USER keycloak WITH PASSWORD 'fixture-identity-db-password';\nCREATE DATABASE keycloak WITH OWNER keycloak;\nGRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;\n",
+    "oauth2_proxy.cfg": "\nhttp_address=\"0.0.0.0:3001\"\n\nreverse_proxy=\"true\"\nredirect_url=\"https://scm.fixture.test:443/oauth2/callback\"\n\nupstreams=[\"http://comply_scarpy:8088/api/\",\n  \"http://comply_scarpy:8088/openapi.json\",\n  \"http://comply_scarpy:8088/v1/graphql\",\n  \"http://comply_ui:3001/\"\n]\n\nwhitelist_domains=[\"scm.fixture.test:*\"]\n\nclient_secret=\"fixture-client-secret\"\nclient_id=\"comply\"\n\npass_access_token=\"true\"\n\nset_xauthrequest=\"true\"\nset_authorization_header=\"true\"\npass_authorization_header=\"true\"\n\ncookie_domains=\"scm.fixture.test\"\ncookie_name=\"puppet_comply\"\ncookie_secret=\"fixture-cookie-secret\"\ncookie_secure=\"true\"\ncookie_httponly=\"false\"\ncookie_expire=\"1h\"\ncookie_refresh=\"1m\"\nemail_domains=[\"*\"]\n\nkeycloak_groups=[\"/Member\"]\noidc_email_claim=\"preferred_username\"\n\nssl_upstream_insecure_skip_verify=\"true\"\nssl_insecure_skip_verify=\"true\"\nskip_jwt_bearer_tokens=\"true\"\ninsecure_oidc_skip_issuer_verification=\"true\"\ninsecure_oidc_allow_unverified_email=\"true\"\nprovider=\"oidc\"\nprovider_display_name=\"Keycloak\"\n# Have added\nextra_jwt_issuers = \"https://scm.fixture.test:443/auth/realms/Puppet=account\"\noidc_issuer_url=\"https://scm.fixture.test:443/auth/realms/Puppet\"\nvalidate_url=\"https://scm.fixture.test:443/auth/realms/Puppet/protocol/openid-connect/userinfo\"\nredeem_url=\"https://scm.fixture.test:443/auth/realms/Puppet/protocol/openid-connect/token\"\nskip_provider_button=\"true\"\nupstream_timeout=\"300s\"",
+    "redis_password": "fixture-redis-password",
+    "ws_report_processor_url": "redis://:fixture-redis-password@comply_redis:6379/"
+  },
+  "ssl": {
+    "cert_chain": null,
+    "crl": null,
+    "private_key": "<sensitive>"
+  },
+  "systemd_unit_dir": "/etc/systemd/system",
+  "tls_crt": "fixture-tls-crt",
+  "tls_key": "fixture-tls-key"
+}

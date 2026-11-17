@@ -37,7 +37,7 @@ Each chart is a hand-made port of what the Bolt module renders. A new product re
 
 Most releases are a version bump. About one release a year per product needs more, usually a base image swap or a database upgrade that needs a dump and restore, and the chart can't do either of those for you.
 
-`Chart.yaml` records the module release each chart was last ported from.
+`Chart.yaml` records the module release each chart was last ported from. [`port/`](port) has scripts that snapshot a module release and diff two of them, which is how to find what a new release changed.
 
 ## Checking a change
 

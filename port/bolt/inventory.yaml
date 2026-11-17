@@ -1,0 +1,6 @@
+# One pretend target. Nothing connects to it: config() only needs the name.
+targets:
+  - name: aio
+    uri: localhost
+    config:
+      transport: local

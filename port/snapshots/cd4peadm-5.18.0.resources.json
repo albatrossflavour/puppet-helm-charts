@@ -1,0 +1,254 @@
+{
+  "pipelinesinfra": {
+    "variables": {
+      "default_java_args": "\"-Duser.timezone=UTC -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${heap_dump_path}\"",
+      "heap_dump_dir": "'/jvm_heap_dumps'",
+      "log4j_src_path": "'/etc/puppetlabs/cd4pe/log4j2.properties'",
+      "log4j_target_path": "'/opt/pfi/log4j2.properties'",
+      "log_target_path": "'/app/logs'"
+    },
+    "resources": {
+      "cd4peadm::runtime::run[$container['name']]": {
+        "env_file": [
+          "'/etc/puppetlabs/cd4pe/env'"
+        ],
+        "extra_parameters": "$container['extra_parameters']",
+        "image": "$container['image']",
+        "ports": [
+          "'8080:8080'",
+          "'8800:8000'"
+        ],
+        "pull_on_start": "false",
+        "require": "Cd4peadm::Runtime::Volume['cd4pe-query-service-token']",
+        "runtime": "$config['runtime']",
+        "volumes": "+"
+      },
+      "cd4peadm::runtime::volume[$container['log_volume_name']]": {
+        "ensure": "present",
+        "runtime": "$config['runtime']"
+      },
+      "cd4peadm::runtime::volume['cd4pe-disk-storage']": {
+        "ensure": "present",
+        "runtime": "$config['runtime']"
+      },
+      "cd4peadm::runtime::volume['cd4pe-heap-dumps']": {
+        "ensure": "present",
+        "runtime": "$config['runtime']"
+      },
+      "cd4peadm::runtime::volume['cd4pe-query-service-token']": {
+        "ensure": "present",
+        "runtime": "$config['runtime']"
+      },
+      "file[$log4j_src_path]": {
+        "content": "epp('cd4peadm/log4j2.properties.epp', $log4j_config)",
+        "ensure": "file",
+        "group": "'root'",
+        "owner": "'root'",
+        "seltype": "'container_file_t'",
+        "show_diff": "false"
+      },
+      "file['/etc/puppetlabs/cd4pe/env']": {
+        "content": "epp('cd4peadm/cd4pe_env.epp', $app_data)",
+        "ensure": "file",
+        "group": "'root'",
+        "notify": "Cd4peadm::Runtime::Run[$container['name']]",
+        "owner": "'root'",
+        "seltype": "'container_file_t'",
+        "show_diff": "false"
+      },
+      "file['/etc/puppetlabs/cd4pe/pfi-config.json']": {
+        "content": "epp('cd4peadm/pfi-config.json.epp', { 'db_endpoint' => $db_endpoint, 'db_username' => $config['db_username'], 'db_password' => $config['db_password'].unwrap, 'secret_key' => $config['secret_key'].unwrap, })",
+        "ensure": "file",
+        "group": "'root'",
+        "notify": "Cd4peadm::Runtime::Run[$container['name']]",
+        "owner": "'root'",
+        "seltype": "'container_file_t'",
+        "show_diff": "false"
+      },
+      "file[[ '/var/lib/puppetlabs', '/var/lib/puppetlabs/cd4pe', $config['backup_dir'], cd4peadm::license_install_dir(), cd4peadm::trusted_certs_install_dir(), ]]": {
+        "ensure": "directory",
+        "group": "'root'",
+        "owner": "'root'",
+        "seltype": "'container_file_t'",
+        "show_diff": "false"
+      },
+      "package['zip']": {
+        "ensure": "present"
+      }
+    }
+  },
+  "postgres": {
+    "variables": {
+      "conf_destination": "\"${postgres_dir}/conf\"",
+      "conf_file": "'/etc/puppetlabs/cd4pe/postgresql.conf'",
+      "hba_file": "'/etc/puppetlabs/cd4pe/pg_hba.conf'",
+      "init_script": "'/etc/puppetlabs/cd4pe/initdb.sql'",
+      "log_directory": "'/var/log/postgresql'",
+      "pgdata": "\"${postgres_dir}/data\"",
+      "postgres_bin": "'/usr/lib/postgresql/17/bin/postgres'",
+      "postgres_dir": "'/var/lib/postgresql'",
+      "repack_script": "'/usr/local/bin/cd-repack.sh'"
+    },
+    "resources": {
+      "cd4peadm::logrotate_config['postgres']": {
+        "keep_files": "$config['keep_log_files']",
+        "path": "\"${cd4peadm::runtime::volume_dir()}/${container['log_volume_name']}/_data/*.log\"",
+        "post_rotate_cmd": "\"${config['runtime']} exec ${container['name']} pg_ctl logrotate --pgdata=${pgdata}\"",
+        "size_mb": "$config['max_log_size_mb']"
+      },
+      "cd4peadm::runtime::run[$container['name']]": {
+        "before_stop": "\"${config['runtime']} exec ${container['name']} pg_ctl stop --mode=fast --pgdata=${pgdata}\"",
+        "command": "\"${postgres_bin} -c config_file=${conf_destination}/postgresql.conf -c hba_file=${conf_destination}/pg_hba.conf\"",
+        "env": [
+          "\"POSTGRES_PASSWORD=${config['admin_db_password'].unwrap}\""
+        ],
+        "extra_parameters": "\"--platform=linux/amd64 ${container['extra_parameters']}\"",
+        "image": "$container['image']",
+        "ports": [
+          "'5432:5432'"
+        ],
+        "pull_on_start": "false",
+        "require": [
+          "File[$init_script]",
+          "File[$hba_file]",
+          "File[$conf_file]"
+        ],
+        "runtime": "$config['runtime']",
+        "volumes": [
+          "\"postgres-data:${pgdata}\"",
+          "\"${init_script}:/docker-entrypoint-initdb.d/initdb.sql\"",
+          "\"${conf_file}:${conf_destination}/postgresql.conf\"",
+          "\"${hba_file}:${conf_destination}/pg_hba.conf\"",
+          "\"${container['log_volume_name']}:${log_directory}\""
+        ]
+      },
+      "cd4peadm::runtime::volume[$container['log_volume_name']]": {
+        "ensure": "'present'",
+        "runtime": "$config['runtime']"
+      },
+      "cd4peadm::runtime::volume['postgres']": {
+        "ensure": "'present'",
+        "runtime": "$config['runtime']"
+      },
+      "cron['repack cd4pe postgres tables']": {
+        "command": "\"${config['runtime']} exec postgres ${repack_script} 2>&1 | sed -e \\\"s/^/[$(date)] /\\\" >> \\\"${logfile}\\\"\"",
+        "hour": "$config['repack_schedule']['hour']",
+        "minute": "$config['repack_schedule']['minute']",
+        "month": "$config['repack_schedule']['month']",
+        "monthday": "$config['repack_schedule']['monthday']",
+        "weekday": "$config['repack_schedule']['weekday']"
+      },
+      "file[$conf_file]": {
+        "content": "epp('cd4peadm/postgres/postgresql.conf.epp', { 'log_directory' => $log_directory, 'log_level' => $config['log_level'], 'max_wal_size' => $config['max_wal_size'] })",
+        "ensure": "'file'",
+        "group": "'root'",
+        "notify": "Cd4peadm::Runtime::Run[$container['name']]",
+        "owner": "'root'",
+        "seltype": "'container_file_t'"
+      },
+      "file[$hba_file]": {
+        "ensure": "'file'",
+        "group": "'root'",
+        "notify": "Cd4peadm::Runtime::Run[$container['name']]",
+        "owner": "'root'",
+        "seltype": "'container_file_t'",
+        "source": "'puppet:///modules/cd4peadm/postgres/pg_hba.conf'"
+      },
+      "file[$init_script]": {
+        "content": "epp('cd4peadm/postgres/initdb.sql.epp', { 'cd4pe_db_username' => $config['cd4pe_db_username'], 'cd4pe_db_password' => $config['cd4pe_db_password'].unwrap, 'query_db_username' => $config['query_db_username'], 'query_db_password' => $config['query_db_password'].unwrap, } )",
+        "ensure": "'file'",
+        "group": "'root'",
+        "owner": "'root'",
+        "seltype": "'container_file_t'"
+      }
+    }
+  },
+  "query": {
+    "variables": {},
+    "resources": {
+      "cd4peadm::logrotate_config['query']": {
+        "keep_files": "$config['keep_log_files']",
+        "path": "\"${cd4peadm::runtime::volume_dir()}/${container['log_volume_name']}/_data/*.log\"",
+        "post_rotate_cmd": "\"${config['runtime']} kill ${container['name']} -s SIGUSR1\"",
+        "size_mb": "$config['max_log_size_mb']"
+      },
+      "cd4peadm::runtime::run[$container['name']]": {
+        "env_file": [
+          "'/etc/puppetlabs/cd4pe/query_env'"
+        ],
+        "extra_parameters": "$container['extra_parameters']",
+        "image": "$container['image']",
+        "ports": [
+          "'8180:8080'"
+        ],
+        "pull_on_start": "false",
+        "runtime": "$config['runtime']",
+        "volumes": "+"
+      },
+      "cd4peadm::runtime::volume[$container['log_volume_name']]": {
+        "ensure": "present",
+        "runtime": "$config['runtime']"
+      },
+      "file['/etc/puppetlabs/cd4pe/query_env']": {
+        "content": "epp('cd4peadm/query_env.epp', $env_data)",
+        "ensure": "file",
+        "group": "'root'",
+        "notify": "Cd4peadm::Runtime::Run[$container['name']]",
+        "owner": "'root'",
+        "seltype": "'container_file_t'",
+        "show_diff": "false"
+      }
+    }
+  },
+  "teams_ui": {
+    "variables": {
+      "nginx_conf_path": "'/etc/puppetlabs/cd4pe/base.conf.template'"
+    },
+    "resources": {
+      "cd4peadm::logrotate_config['ui']": {
+        "keep_files": "$config['keep_log_files']",
+        "path": "\"${cd4peadm::runtime::volume_dir()}/${container['log_volume_name']}/_data/*.log\"",
+        "post_rotate_cmd": "\"${config['runtime']} kill ${container['name']} -s SIGUSR1\"",
+        "size_mb": "$config['max_log_size_mb']"
+      },
+      "cd4peadm::runtime::run[$container['name']]": {
+        "env": [
+          "\"CD4PE_SERVICE=http://${facts['networking']['ip']}:8080\"",
+          "\"QUERY_SERVICE=http://${facts['networking']['ip']}:8180\"",
+          "\"LOGGING=${config['console_log_level']}\"",
+          "\"TEAMS_UI_VERSION=${config['teams_ui_version']}\""
+        ],
+        "extra_parameters": "$container['extra_parameters']",
+        "image": "$container['image']",
+        "ports": [
+          "'443:3000'",
+          "\"${webhook_port}:${webhook_port}\""
+        ],
+        "pull_on_start": "false",
+        "runtime": "$config['runtime']",
+        "volumes": [
+          "\"${container['log_volume_name']}:/app/logs\"",
+          "\"${nginx_conf_path}:/etc/nginx/templates/base.conf.template\"",
+          "'/etc/puppetlabs/cd4pe/browser_certs:/etc/nginx/certs'"
+        ]
+      },
+      "cd4peadm::runtime::volume[$container['log_volume_name']]": {
+        "ensure": "present",
+        "runtime": "$config['runtime']"
+      },
+      "file[$nginx_conf_path]": {
+        "content": "epp('cd4peadm/nginx/base.conf.template.epp', { enable_ssl_webhooks => $config['enable_ssl_webhooks'], webhook_port => $webhook_port, webhook_service => \"http://${facts['networking']['ip']}:8800\", proxy_read_timeout => $config['nginx_proxy_timeout_secs'], })",
+        "ensure": "'file'",
+        "group": "'root'",
+        "owner": "'root'",
+        "seltype": "'container_file_t'"
+      },
+      "file[[ '/etc/puppetlabs/cd4pe/browser_certs/cert_chain.pem', '/etc/puppetlabs/cd4pe/browser_certs/crl.pem', '/etc/puppetlabs/cd4pe/browser_certs/private_key.pem', ]]": {
+        "ensure": "file",
+        "group": "'root'",
+        "owner": "'root'",
+        "seltype": "'container_file_t'"
+      }
+    }
+  }
+}
