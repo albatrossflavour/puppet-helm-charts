@@ -3,6 +3,7 @@
 
 # List what each component manifest in a module declares, as written: every
 # container run, file, volume and cron job, with each attribute's source text.
+# Also checksum the module's templates, static files and upgrade plans.
 # Nothing is compiled or evaluated, so variables stay as $names. That is the
 # point: two versions of a manifest compare cleanly whatever data they are fed.
 #
@@ -58,4 +59,14 @@ Dir.glob(File.join(module_dir, 'manifests', 'component', '*.pp')).sort.each do |
   variables = text.scan(/^\s*\$(\w+)\s*=\s*(['"][^'"\n]*['"])\s*$/).to_h
   out[File.basename(path, '.pp')] = { 'variables' => variables.sort.to_h, 'resources' => found }
 end
-puts JSON.pretty_generate(out)
+# A checksum of every template and static file. A template whose body changed
+# but whose parameters did not would otherwise go unnoticed. The upgrade plans
+# are included because a change there can mean a data migration.
+require 'digest'
+files = {}
+%w[templates files data plans/upgrade.pp plans/upgrade].each do |part|
+  root = File.join(module_dir, part)
+  paths = File.file?(root) ? [root] : Dir.glob(File.join(root, '**', '*')).select { |f| File.file?(f) }
+  paths.sort.each { |f| files[f.delete_prefix("#{module_dir}/")] = Digest::SHA256.file(f).hexdigest[0, 16] }
+end
+puts JSON.pretty_generate('components' => out, 'files' => files)

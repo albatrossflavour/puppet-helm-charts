@@ -1,747 +1,779 @@
 {
-  "assessor_upgrade": {
-    "variables": {},
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after": "$container['after']",
-        "cmd": "$container['cmd']",
-        "env_file": [
-          "$init_env"
-        ],
-        "env_secrets": "$container['env_secrets']",
-        "extra_parameters": "$container['extra_parameters']",
-        "extra_systemd_parameters": "$container['extra_systemd_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "net": "$container['net']",
-        "pull_on_start": "false",
-        "require": [
-          "File[$init_env]"
-        ],
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']"
-      },
-      "file[$init_env]": {
-        "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
+  "components": {
+    "assessor_upgrade": {
+      "variables": {},
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after": "$container['after']",
+          "cmd": "$container['cmd']",
+          "env_file": [
+            "$init_env"
+          ],
+          "env_secrets": "$container['env_secrets']",
+          "extra_parameters": "$container['extra_parameters']",
+          "extra_systemd_parameters": "$container['extra_systemd_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "net": "$container['net']",
+          "pull_on_start": "false",
+          "require": [
+            "File[$init_env]"
+          ],
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']"
+        },
+        "file[$init_env]": {
+          "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        }
       }
-    }
-  },
-  "frontdoor": {
-    "variables": {
-      "cert_chain": "\"${installation_dir}/comply_certs/cert_chain.pem\"",
-      "conf_file": "\"${installation_dir}/frontdoor_proxy_nginx.conf\"",
-      "crl": "\"${installation_dir}/comply_certs/crl.pem\"",
-      "private_key": "\"${installation_dir}/comply_certs/private_key.pem\""
     },
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after": "$container['after']",
-        "before_start": "$before_start",
-        "extra_parameters": "$container['extra_parameters']",
-        "extra_systemd_parameters": "$container['extra_systemd_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "net": "$container['net']",
-        "ports": "$container['ports']",
-        "pull_on_start": "false",
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']",
-        "volumes": [
-          "\"${conf_file}:/etc/nginx/nginx.conf\"",
-          "\"${installation_dir}/comply_certs:/certs\"",
-          "\"${installation_dir}/nginx_healthcheck.sh:/health/nginx_healthcheck.sh\""
-        ]
+    "frontdoor": {
+      "variables": {
+        "cert_chain": "\"${installation_dir}/comply_certs/cert_chain.pem\"",
+        "conf_file": "\"${installation_dir}/frontdoor_proxy_nginx.conf\"",
+        "crl": "\"${installation_dir}/comply_certs/crl.pem\"",
+        "private_key": "\"${installation_dir}/comply_certs/private_key.pem\""
       },
-      "file[$cert_chain]": {
-        "content": "$config['cert_chain']",
-        "ensure": "'file'",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'"
-      },
-      "file[$conf_file]": {
-        "content": "epp('complyadm/frontdoor/nginx_conf.epp', { runtime => $container['runtime'], application_port => $config['application_port'], admin_console_enabled => $config['admin_console_enabled'], })",
-        "ensure": "'file'",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'"
-      },
-      "file[$crl]": {
-        "content": "$config['crl']",
-        "ensure": "'file'",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'"
-      },
-      "file[$healthcheck_file]": {
-        "content": "epp('complyadm/runtime/service-watchdog.epp', { healthcheck => \"${container['runtime']} exec ${container['name']} ${container['healthcheck']}\" })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "mode": "'+x'",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      },
-      "file[$private_key]": {
-        "content": "$config['private_key']",
-        "ensure": "'file'",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'"
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after": "$container['after']",
+          "before_start": "$before_start",
+          "extra_parameters": "$container['extra_parameters']",
+          "extra_systemd_parameters": "$container['extra_systemd_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "net": "$container['net']",
+          "ports": "$container['ports']",
+          "pull_on_start": "false",
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']",
+          "volumes": [
+            "\"${conf_file}:/etc/nginx/nginx.conf\"",
+            "\"${installation_dir}/comply_certs:/certs\"",
+            "\"${installation_dir}/nginx_healthcheck.sh:/health/nginx_healthcheck.sh\""
+          ]
+        },
+        "file[$cert_chain]": {
+          "content": "$config['cert_chain']",
+          "ensure": "'file'",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'"
+        },
+        "file[$conf_file]": {
+          "content": "epp('complyadm/frontdoor/nginx_conf.epp', { runtime => $container['runtime'], application_port => $config['application_port'], admin_console_enabled => $config['admin_console_enabled'], })",
+          "ensure": "'file'",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'"
+        },
+        "file[$crl]": {
+          "content": "$config['crl']",
+          "ensure": "'file'",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'"
+        },
+        "file[$healthcheck_file]": {
+          "content": "epp('complyadm/runtime/service-watchdog.epp', { healthcheck => \"${container['runtime']} exec ${container['name']} ${container['healthcheck']}\" })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "mode": "'+x'",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        },
+        "file[$private_key]": {
+          "content": "$config['private_key']",
+          "ensure": "'file'",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'"
+        }
       }
-    }
-  },
-  "gatekeeper": {
-    "variables": {
-      "conf_file": "\"${installation_dir}/oauth2_proxy.cfg\""
     },
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after": "$container['after']",
-        "cmd": "$container['cmd']",
-        "extra_parameters": "$container['extra_parameters']",
-        "extra_systemd_parameters": "{ 'Service' => { 'RestartSec' => 30 }, }",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "mnt_secrets": "$container['mnt_secrets']",
-        "net": "$container['net']",
-        "ports": "$container['ports']",
-        "pull_on_start": "false",
-        "require": "$require",
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']",
-        "volumes": "$volumes"
+    "gatekeeper": {
+      "variables": {
+        "conf_file": "\"${installation_dir}/oauth2_proxy.cfg\""
       },
-      "file[$conf_file]": {
-        "content": "epp('complyadm/gatekeeper/oauth2_proxy.cfg.epp', { 'application_port' => $config['application_port'], 'client_secret' => $config['client_secret'], 'cookie_secret' => $config['cookie_secret'], 'host_fqdn' => $config['hostname'], 'scarpy' => $config['scarpy'], 'graphql' => $config['graphql'], 'ui' => $config['ui'], })",
-        "ensure": "'file'",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'"
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after": "$container['after']",
+          "cmd": "$container['cmd']",
+          "extra_parameters": "$container['extra_parameters']",
+          "extra_systemd_parameters": "{ 'Service' => { 'RestartSec' => 30 }, }",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "mnt_secrets": "$container['mnt_secrets']",
+          "net": "$container['net']",
+          "ports": "$container['ports']",
+          "pull_on_start": "false",
+          "require": "$require",
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']",
+          "volumes": "$volumes"
+        },
+        "file[$conf_file]": {
+          "content": "epp('complyadm/gatekeeper/oauth2_proxy.cfg.epp', { 'application_port' => $config['application_port'], 'client_secret' => $config['client_secret'], 'cookie_secret' => $config['cookie_secret'], 'host_fqdn' => $config['hostname'], 'scarpy' => $config['scarpy'], 'graphql' => $config['graphql'], 'ui' => $config['ui'], })",
+          "ensure": "'file'",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'"
+        }
       }
-    }
-  },
-  "graphql": {
-    "variables": {
-      "before_start": "''",
-      "graphql_env": "\"${installation_dir}/graphql.env\""
     },
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after": "$container['after']",
-        "before_start": "$before_start",
-        "env_file": [
-          "$graphql_env"
-        ],
-        "env_secrets": "$container['env_secrets']",
-        "extra_parameters": "$container['extra_parameters']",
-        "extra_systemd_parameters": "$container['extra_systemd_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "net": "$container['net']",
-        "ports": "$container['ports']",
-        "pull_on_start": "false",
-        "require": "File[$graphql_env]",
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']"
+    "graphql": {
+      "variables": {
+        "before_start": "''",
+        "graphql_env": "\"${installation_dir}/graphql.env\""
       },
-      "file[$graphql_env]": {
-        "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      },
-      "file[$healthcheck_file]": {
-        "content": "epp('complyadm/runtime/service-watchdog.epp', { healthcheck => \"${container['runtime']} exec ${container['name']} ${container['healthcheck']}\" })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "mode": "'+x'",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after": "$container['after']",
+          "before_start": "$before_start",
+          "env_file": [
+            "$graphql_env"
+          ],
+          "env_secrets": "$container['env_secrets']",
+          "extra_parameters": "$container['extra_parameters']",
+          "extra_systemd_parameters": "$container['extra_systemd_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "net": "$container['net']",
+          "ports": "$container['ports']",
+          "pull_on_start": "false",
+          "require": "File[$graphql_env]",
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']"
+        },
+        "file[$graphql_env]": {
+          "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        },
+        "file[$healthcheck_file]": {
+          "content": "epp('complyadm/runtime/service-watchdog.epp', { healthcheck => \"${container['runtime']} exec ${container['name']} ${container['healthcheck']}\" })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "mode": "'+x'",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        }
       }
-    }
-  },
-  "graphql_init": {
-    "variables": {},
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after": "$container['after']",
-        "env_file": [
-          "$init_env"
-        ],
-        "env_secrets": "$container['env_secrets']",
-        "extra_parameters": "$container['extra_parameters']",
-        "extra_systemd_parameters": "$container['extra_systemd_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "net": "$container['net']",
-        "pull_on_start": "false",
-        "require": "File[$init_env]",
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']"
-      },
-      "file[$init_env]": {
-        "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      }
-    }
-  },
-  "identity": {
-    "variables": {
-      "before_start": "''",
-      "ca_cert_identity": "\"${installation_dir}/pe_certs/.ca.crt.identity\"",
-      "identity_env": "\"${installation_dir}/identity.env\"",
-      "keycloak_import": "\"${installation_dir}/Puppet-realm.json\""
     },
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after": "$container['after']",
-        "before_start": "$before_start",
-        "env_file": [
-          "$identity_env"
-        ],
-        "env_secrets": "$container['env_secrets']",
-        "extra_parameters": "$container['extra_parameters']",
-        "extra_systemd_parameters": "$container['extra_systemd_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "mnt_secrets": "$container['mnt_secrets']",
-        "net": "$container['net']",
-        "ports": "$container['ports']",
-        "pull_on_start": "false",
-        "require": "$require",
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']",
-        "volumes": "$volumes"
-      },
-      "file[$ca_cert_identity]": {
-        "content": "$config['ca_crt']",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']"
-      },
-      "file[$healthcheck_file]": {
-        "content": "epp('complyadm/runtime/service-watchdog.epp', { healthcheck => \"${container['runtime']} exec ${container['name']} ${container['healthcheck']}\" })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "mode": "'+x'",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      },
-      "file[$identity_env]": {
-        "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      },
-      "file[$keycloak_import]": {
-        "content": "epp('complyadm/identity/puppet-realm.json.epp', { 'account' => $config['identity_account'], 'account_console' => $config['identity_account_console'], 'admin_cli' => $config['identity_admin_cli'], 'broker' => $config['identity_broker'], 'realm_management' => $config['identity_realm_management'], 'security_admin_console' => $config['identity_security_admin_console'], 'comply' => $config['client_secret'], 'host_fqdn' => $config['hostname'], 'https_port' => 3001, 'application_port' => $config['application_port'], 'sso_session_idle_timeout' => $config['sso_session_idle_timeout'], 'access_token_lifespan' => $config['access_token_lifespan'], })",
-        "ensure": "'file'",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'"
+    "graphql_init": {
+      "variables": {},
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after": "$container['after']",
+          "env_file": [
+            "$init_env"
+          ],
+          "env_secrets": "$container['env_secrets']",
+          "extra_parameters": "$container['extra_parameters']",
+          "extra_systemd_parameters": "$container['extra_systemd_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "net": "$container['net']",
+          "pull_on_start": "false",
+          "require": "File[$init_env]",
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']"
+        },
+        "file[$init_env]": {
+          "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        }
       }
-    }
-  },
-  "mtls_proxy": {
-    "variables": {
-      "conf_file": "\"${installation_dir}/mtls_proxy_nginx.conf\"",
-      "tls_crt": "\"${installation_dir}/pe_certs/tls.crt\"",
-      "tls_key": "\"${installation_dir}/pe_certs/tls.key\""
     },
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after": "$container['after']",
-        "before_start": "$before_start",
-        "cmd": "$container['cmd']",
-        "extra_parameters": "$container['extra_parameters']",
-        "extra_systemd_parameters": "$container['extra_systemd_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "net": "$container['net']",
-        "ports": "$container['ports']",
-        "pull_on_start": "false",
-        "require": [
-          "File[$conf_file]",
-          "File[$tls_crt]",
-          "File[$tls_key]"
-        ],
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']",
-        "volumes": [
-          "\"${conf_file}:/etc/nginx/nginx.conf\"",
-          "\"${installation_dir}/pe_certs:/certs\"",
-          "\"${installation_dir}/nginx_healthcheck.sh:/health/nginx_healthcheck.sh\""
-        ]
+    "identity": {
+      "variables": {
+        "before_start": "''",
+        "ca_cert_identity": "\"${installation_dir}/pe_certs/.ca.crt.identity\"",
+        "identity_env": "\"${installation_dir}/identity.env\"",
+        "keycloak_import": "\"${installation_dir}/Puppet-realm.json\""
       },
-      "file[$conf_file]": {
-        "content": "epp('complyadm/mtls_proxy/nginx_conf.epp', { 'runtime' => $container['runtime'], 'pe_cert_checks_disabled' => $config['pe_cert_checks_disabled'], })",
-        "ensure": "'file'",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'"
-      },
-      "file[$healthcheck_file]": {
-        "content": "epp('complyadm/runtime/service-watchdog.epp', { healthcheck => \"${container['runtime']} exec ${container['name']} ${container['healthcheck']}\" })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "mode": "'+x'",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      },
-      "file[$tls_crt]": {
-        "content": "$config['tls_crt']",
-        "ensure": "'file'",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'"
-      },
-      "file[$tls_key]": {
-        "content": "$config['tls_key']",
-        "ensure": "'file'",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'"
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after": "$container['after']",
+          "before_start": "$before_start",
+          "env_file": [
+            "$identity_env"
+          ],
+          "env_secrets": "$container['env_secrets']",
+          "extra_parameters": "$container['extra_parameters']",
+          "extra_systemd_parameters": "$container['extra_systemd_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "mnt_secrets": "$container['mnt_secrets']",
+          "net": "$container['net']",
+          "ports": "$container['ports']",
+          "pull_on_start": "false",
+          "require": "$require",
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']",
+          "volumes": "$volumes"
+        },
+        "file[$ca_cert_identity]": {
+          "content": "$config['ca_crt']",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']"
+        },
+        "file[$healthcheck_file]": {
+          "content": "epp('complyadm/runtime/service-watchdog.epp', { healthcheck => \"${container['runtime']} exec ${container['name']} ${container['healthcheck']}\" })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "mode": "'+x'",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        },
+        "file[$identity_env]": {
+          "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        },
+        "file[$keycloak_import]": {
+          "content": "epp('complyadm/identity/puppet-realm.json.epp', { 'account' => $config['identity_account'], 'account_console' => $config['identity_account_console'], 'admin_cli' => $config['identity_admin_cli'], 'broker' => $config['identity_broker'], 'realm_management' => $config['identity_realm_management'], 'security_admin_console' => $config['identity_security_admin_console'], 'comply' => $config['client_secret'], 'host_fqdn' => $config['hostname'], 'https_port' => 3001, 'application_port' => $config['application_port'], 'sso_session_idle_timeout' => $config['sso_session_idle_timeout'], 'access_token_lifespan' => $config['access_token_lifespan'], })",
+          "ensure": "'file'",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'"
+        }
       }
-    }
-  },
-  "postgres": {
-    "variables": {
-      "conf_file": "\"${installation_dir}/postgresql.conf\"",
-      "hba_file": "\"${installation_dir}/pg_hba.conf\"",
-      "init_script": "'/etc/puppetlabs/comply/initdb.sql'",
-      "pgconf": "\"${postgres_dir}/conf\"",
-      "pgdata": "\"${postgres_dir}/data\"",
-      "postgres_dir": "'/bitnami/postgresql'",
-      "postgres_env": "\"${installation_dir}/postgres.env\""
     },
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after_create": "$store_volumes_file",
-        "before_start": "$before_start",
-        "before_stop": "\"/usr/bin/${container['runtime']} exec ${container['name']} pg_ctl stop --mode=fast --pgdata=${pgdata}\"",
-        "cmd": "\"-c config_file=${pgconf}/postgresql.conf -c hba_file=${pgconf}/pg_hba.conf\"",
-        "env_file": [
-          "$postgres_env"
-        ],
-        "env_secrets": "$container['env_secrets']",
-        "extra_parameters": "\"--platform=linux/amd64 ${container['extra_parameters']}\"",
-        "extra_systemd_parameters": "$container['extra_systemd_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "mnt_secrets": "$container['mnt_secrets']",
-        "net": "$container['net']",
-        "ports": "$container['ports']",
-        "pull_on_start": "false",
-        "require": "$require",
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']",
-        "volumes": "$volumes"
+    "mtls_proxy": {
+      "variables": {
+        "conf_file": "\"${installation_dir}/mtls_proxy_nginx.conf\"",
+        "tls_crt": "\"${installation_dir}/pe_certs/tls.crt\"",
+        "tls_key": "\"${installation_dir}/pe_certs/tls.key\""
       },
-      "complyadm::runtime::volume['postgres']": {
-        "ensure": "'present'",
-        "runtime": "$container['runtime']"
-      },
-      "file[$conf_file]": {
-        "content": "epp('complyadm/postgres/postgresql.conf.epp', { log_level => $config['log_level'] })",
-        "ensure": "'file'",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'"
-      },
-      "file[$hba_file]": {
-        "ensure": "'file'",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "source": "$hba"
-      },
-      "file[$healthcheck_file]": {
-        "content": "epp('complyadm/runtime/service-watchdog.epp', { healthcheck => \"${container['runtime']} exec ${container['name']} ${container['healthcheck']}\" })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "mode": "'+x'",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      },
-      "file[$init_script]": {
-        "content": "epp('complyadm/postgres/initdb.sql.epp', { 'comply_db_username' => $config['comply_db_username'], 'comply_db_password' => $config['comply_db_password'], 'identity_db_username' => $config['identity_db_username'], 'identity_db_password' => $config['identity_db_password'], })",
-        "ensure": "'file'",
-        "group": "$config['installation_group']",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'"
-      },
-      "file[$postgres_env]": {
-        "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      },
-      "file[$remove_volumes_file]": {
-        "content": "\"for volume in $(cat ${installation_dir}/${container['name']}-volumes.txt); do /usr/bin/${container['runtime']} volume rm --force \\$volume;done\"",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "mode": "'+x'",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      },
-      "file[$store_volumes_file]": {
-        "content": "\"/usr/bin/${container['runtime']} inspect comply_postgres | grep -v postgres | grep -o 'volumes.*' | cut -d '/' -f 2 > ${installation_dir}/${container['name']}-volumes.txt\"",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "mode": "'+x'",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after": "$container['after']",
+          "before_start": "$before_start",
+          "cmd": "$container['cmd']",
+          "extra_parameters": "$container['extra_parameters']",
+          "extra_systemd_parameters": "$container['extra_systemd_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "net": "$container['net']",
+          "ports": "$container['ports']",
+          "pull_on_start": "false",
+          "require": [
+            "File[$conf_file]",
+            "File[$tls_crt]",
+            "File[$tls_key]"
+          ],
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']",
+          "volumes": [
+            "\"${conf_file}:/etc/nginx/nginx.conf\"",
+            "\"${installation_dir}/pe_certs:/certs\"",
+            "\"${installation_dir}/nginx_healthcheck.sh:/health/nginx_healthcheck.sh\""
+          ]
+        },
+        "file[$conf_file]": {
+          "content": "epp('complyadm/mtls_proxy/nginx_conf.epp', { 'runtime' => $container['runtime'], 'pe_cert_checks_disabled' => $config['pe_cert_checks_disabled'], })",
+          "ensure": "'file'",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'"
+        },
+        "file[$healthcheck_file]": {
+          "content": "epp('complyadm/runtime/service-watchdog.epp', { healthcheck => \"${container['runtime']} exec ${container['name']} ${container['healthcheck']}\" })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "mode": "'+x'",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        },
+        "file[$tls_crt]": {
+          "content": "$config['tls_crt']",
+          "ensure": "'file'",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'"
+        },
+        "file[$tls_key]": {
+          "content": "$config['tls_key']",
+          "ensure": "'file'",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'"
+        }
       }
-    }
-  },
-  "redis": {
-    "variables": {
-      "before_start": "''",
-      "redis_conf": "\"${installation_dir}/redis.conf\"",
-      "redis_env": "\"${installation_dir}/redis.env\""
     },
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "before_start": "$before_start",
-        "cmd": "$container['cmd']",
-        "env_file": [
-          "$redis_env"
-        ],
-        "env_secrets": "$container['env_secrets']",
-        "extra_parameters": "$container['extra_parameters']",
-        "extra_systemd_parameters": "$container['extra_systemd_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "net": "$container['net']",
-        "ports": "$container['ports']",
-        "pull_on_start": "false",
-        "require": [
-          "Complyadm::Runtime::Volume['redis']",
-          "File[$redis_env]",
-          "File[$redis_conf]"
-        ],
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']",
-        "volumes": [
-          "'redis:/data'",
-          "\"${redis_conf}:/usr/local/etc/redis/redis.conf\""
-        ]
+    "postgres": {
+      "variables": {
+        "conf_file": "\"${installation_dir}/postgresql.conf\"",
+        "hba_file": "\"${installation_dir}/pg_hba.conf\"",
+        "init_script": "'/etc/puppetlabs/comply/initdb.sql'",
+        "pgconf": "\"${postgres_dir}/conf\"",
+        "pgdata": "\"${postgres_dir}/data\"",
+        "postgres_dir": "'/bitnami/postgresql'",
+        "postgres_env": "\"${installation_dir}/postgres.env\""
       },
-      "complyadm::runtime::volume['redis']": {
-        "ensure": "'present'",
-        "runtime": "$container['runtime']"
-      },
-      "file[$healthcheck_file]": {
-        "content": "epp('complyadm/runtime/service-watchdog.epp', { healthcheck => \"${container['runtime']} exec ${container['name']} ${container['healthcheck']}\" })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "mode": "'+x'",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      },
-      "file[$redis_conf]": {
-        "content": "epp('complyadm/redis/redis.conf.epp', { requirepass => $container['env_vars']['REDIS_PASSWORD'], })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      },
-      "file[$redis_env]": {
-        "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after_create": "$store_volumes_file",
+          "before_start": "$before_start",
+          "before_stop": "\"/usr/bin/${container['runtime']} exec ${container['name']} pg_ctl stop --mode=fast --pgdata=${pgdata}\"",
+          "cmd": "\"-c config_file=${pgconf}/postgresql.conf -c hba_file=${pgconf}/pg_hba.conf\"",
+          "env_file": [
+            "$postgres_env"
+          ],
+          "env_secrets": "$container['env_secrets']",
+          "extra_parameters": "\"--platform=linux/amd64 ${container['extra_parameters']}\"",
+          "extra_systemd_parameters": "$container['extra_systemd_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "mnt_secrets": "$container['mnt_secrets']",
+          "net": "$container['net']",
+          "ports": "$container['ports']",
+          "pull_on_start": "false",
+          "require": "$require",
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']",
+          "volumes": "$volumes"
+        },
+        "complyadm::runtime::volume['postgres']": {
+          "ensure": "'present'",
+          "runtime": "$container['runtime']"
+        },
+        "file[$conf_file]": {
+          "content": "epp('complyadm/postgres/postgresql.conf.epp', { log_level => $config['log_level'] })",
+          "ensure": "'file'",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'"
+        },
+        "file[$hba_file]": {
+          "ensure": "'file'",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "source": "$hba"
+        },
+        "file[$healthcheck_file]": {
+          "content": "epp('complyadm/runtime/service-watchdog.epp', { healthcheck => \"${container['runtime']} exec ${container['name']} ${container['healthcheck']}\" })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "mode": "'+x'",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        },
+        "file[$init_script]": {
+          "content": "epp('complyadm/postgres/initdb.sql.epp', { 'comply_db_username' => $config['comply_db_username'], 'comply_db_password' => $config['comply_db_password'], 'identity_db_username' => $config['identity_db_username'], 'identity_db_password' => $config['identity_db_password'], })",
+          "ensure": "'file'",
+          "group": "$config['installation_group']",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'"
+        },
+        "file[$postgres_env]": {
+          "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        },
+        "file[$remove_volumes_file]": {
+          "content": "\"for volume in $(cat ${installation_dir}/${container['name']}-volumes.txt); do /usr/bin/${container['runtime']} volume rm --force \\$volume;done\"",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "mode": "'+x'",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        },
+        "file[$store_volumes_file]": {
+          "content": "\"/usr/bin/${container['runtime']} inspect comply_postgres | grep -v postgres | grep -o 'volumes.*' | cut -d '/' -f 2 > ${installation_dir}/${container['name']}-volumes.txt\"",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "mode": "'+x'",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        }
       }
-    }
-  },
-  "scarpy": {
-    "variables": {
-      "ca_cert_scarpy": "\"${installation_dir}/.ca.crt.scarpy\"",
-      "scarpy_env": "\"${installation_dir}/scarpy.env\""
     },
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after": "$container['after']",
-        "cmd": "$container['cmd']",
-        "env_file": [
-          "$scarpy_env"
-        ],
-        "env_secrets": "$container['env_secrets']",
-        "extra_parameters": "$container['extra_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "net": "$container['net']",
-        "ports": "$container['ports']",
-        "pull_on_start": "false",
-        "require": [
-          "File[$scarpy_env]"
-        ],
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']",
-        "volumes": [
-          "'benchmarks:/Assessor-CLI'",
-          "\"${installation_dir}/pe_certs:/certs\""
-        ]
+    "redis": {
+      "variables": {
+        "before_start": "''",
+        "redis_conf": "\"${installation_dir}/redis.conf\"",
+        "redis_env": "\"${installation_dir}/redis.env\""
       },
-      "file[$ca_cert_scarpy]": {
-        "content": "$config['ca_crt']",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']"
-      },
-      "file[$scarpy_env]": {
-        "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "before_start": "$before_start",
+          "cmd": "$container['cmd']",
+          "env_file": [
+            "$redis_env"
+          ],
+          "env_secrets": "$container['env_secrets']",
+          "extra_parameters": "$container['extra_parameters']",
+          "extra_systemd_parameters": "$container['extra_systemd_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "net": "$container['net']",
+          "ports": "$container['ports']",
+          "pull_on_start": "false",
+          "require": [
+            "Complyadm::Runtime::Volume['redis']",
+            "File[$redis_env]",
+            "File[$redis_conf]"
+          ],
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']",
+          "volumes": [
+            "'redis:/data'",
+            "\"${redis_conf}:/usr/local/etc/redis/redis.conf\""
+          ]
+        },
+        "complyadm::runtime::volume['redis']": {
+          "ensure": "'present'",
+          "runtime": "$container['runtime']"
+        },
+        "file[$healthcheck_file]": {
+          "content": "epp('complyadm/runtime/service-watchdog.epp', { healthcheck => \"${container['runtime']} exec ${container['name']} ${container['healthcheck']}\" })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "mode": "'+x'",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        },
+        "file[$redis_conf]": {
+          "content": "epp('complyadm/redis/redis.conf.epp', { requirepass => $container['env_vars']['REDIS_PASSWORD'], })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        },
+        "file[$redis_env]": {
+          "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        }
       }
-    }
-  },
-  "scarpy_assessor_init": {
-    "variables": {},
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after": "$container['after']",
-        "cmd": "$container['cmd']",
-        "env_file": [
-          "$init_env"
-        ],
-        "extra_parameters": "$container['extra_parameters']",
-        "extra_systemd_parameters": "$container['extra_systemd_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "net": "$container['net']",
-        "pull_on_start": "false",
-        "require": [
-          "File[$init_env]"
-        ],
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']",
-        "volumes": [
-          "'benchmarks:/Assessor-CLI'"
-        ]
-      },
-      "complyadm::runtime::volume['benchmarks']": {
-        "ensure": "'present'",
-        "runtime": "$container['runtime']"
-      },
-      "file[$init_env]": {
-        "content": "epp('complyadm/comply_env.epp', { env_vars => $container['env_vars'] })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      }
-    }
-  },
-  "scarpy_init": {
-    "variables": {},
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after": "$container['after']",
-        "cmd": "$container['cmd']",
-        "env_file": [
-          "$init_env"
-        ],
-        "env_secrets": "$container['env_secrets']",
-        "extra_parameters": "$container['extra_parameters']",
-        "extra_systemd_parameters": "$container['extra_systemd_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "net": "$container['net']",
-        "pull_on_start": "false",
-        "require": [
-          "File[$init_env]"
-        ],
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']",
-        "volumes": [
-          "'benchmarks:/Assessor-CLI'",
-          "\"${installation_dir}/pe_certs:/certs\""
-        ]
-      },
-      "file[$init_env]": {
-        "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      }
-    }
-  },
-  "ui": {
-    "variables": {
-      "ui_env": "\"${installation_dir}/ui.env\""
     },
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after": "$container['after']",
-        "env_file": [
-          "$ui_env"
-        ],
-        "extra_parameters": "$container['extra_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "net": "$container['net']",
-        "notify": "Complyadm::Runtime::Run['comply_ui_assessor_init']",
-        "pull_on_start": "false",
-        "require": "File[$ui_env]",
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']",
-        "volumes": [
-          "'assessors:/usr/src/app/public/files'"
-        ]
+    "scarpy": {
+      "variables": {
+        "ca_cert_scarpy": "\"${installation_dir}/.ca.crt.scarpy\"",
+        "scarpy_env": "\"${installation_dir}/scarpy.env\""
       },
-      "file[$ui_env]": {
-        "content": "epp('complyadm/comply_env.epp', { env_vars => $container['env_vars'] })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after": "$container['after']",
+          "cmd": "$container['cmd']",
+          "env_file": [
+            "$scarpy_env"
+          ],
+          "env_secrets": "$container['env_secrets']",
+          "extra_parameters": "$container['extra_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "net": "$container['net']",
+          "ports": "$container['ports']",
+          "pull_on_start": "false",
+          "require": [
+            "File[$scarpy_env]"
+          ],
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']",
+          "volumes": [
+            "'benchmarks:/Assessor-CLI'",
+            "\"${installation_dir}/pe_certs:/certs\""
+          ]
+        },
+        "file[$ca_cert_scarpy]": {
+          "content": "$config['ca_crt']",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']"
+        },
+        "file[$scarpy_env]": {
+          "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        }
+      }
+    },
+    "scarpy_assessor_init": {
+      "variables": {},
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after": "$container['after']",
+          "cmd": "$container['cmd']",
+          "env_file": [
+            "$init_env"
+          ],
+          "extra_parameters": "$container['extra_parameters']",
+          "extra_systemd_parameters": "$container['extra_systemd_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "net": "$container['net']",
+          "pull_on_start": "false",
+          "require": [
+            "File[$init_env]"
+          ],
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']",
+          "volumes": [
+            "'benchmarks:/Assessor-CLI'"
+          ]
+        },
+        "complyadm::runtime::volume['benchmarks']": {
+          "ensure": "'present'",
+          "runtime": "$container['runtime']"
+        },
+        "file[$init_env]": {
+          "content": "epp('complyadm/comply_env.epp', { env_vars => $container['env_vars'] })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        }
+      }
+    },
+    "scarpy_init": {
+      "variables": {},
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after": "$container['after']",
+          "cmd": "$container['cmd']",
+          "env_file": [
+            "$init_env"
+          ],
+          "env_secrets": "$container['env_secrets']",
+          "extra_parameters": "$container['extra_parameters']",
+          "extra_systemd_parameters": "$container['extra_systemd_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "net": "$container['net']",
+          "pull_on_start": "false",
+          "require": [
+            "File[$init_env]"
+          ],
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']",
+          "volumes": [
+            "'benchmarks:/Assessor-CLI'",
+            "\"${installation_dir}/pe_certs:/certs\""
+          ]
+        },
+        "file[$init_env]": {
+          "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        }
+      }
+    },
+    "ui": {
+      "variables": {
+        "ui_env": "\"${installation_dir}/ui.env\""
+      },
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after": "$container['after']",
+          "env_file": [
+            "$ui_env"
+          ],
+          "extra_parameters": "$container['extra_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "net": "$container['net']",
+          "notify": "Complyadm::Runtime::Run['comply_ui_assessor_init']",
+          "pull_on_start": "false",
+          "require": "File[$ui_env]",
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']",
+          "volumes": [
+            "'assessors:/usr/src/app/public/files'"
+          ]
+        },
+        "file[$ui_env]": {
+          "content": "epp('complyadm/comply_env.epp', { env_vars => $container['env_vars'] })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        }
+      }
+    },
+    "ui_assessor_init": {
+      "variables": {},
+      "resources": {
+        "complyadm::runtime::run[$container['name']]": {
+          "after": "$container['after']",
+          "env_file": [
+            "$init_env"
+          ],
+          "extra_parameters": "$container['extra_parameters']",
+          "extra_systemd_parameters": "$container['extra_systemd_parameters']",
+          "image": "$container['image']",
+          "install_runtime": "$container['install_runtime']",
+          "installation_dir": "$config['installation_dir']",
+          "installation_group": "$config['installation_group']",
+          "installation_user": "$config['installation_user']",
+          "net": "$container['net']",
+          "pull_on_start": "false",
+          "require": [
+            "File[$init_env]"
+          ],
+          "runtime": "$container['runtime']",
+          "systemd_unit_dir": "$config['systemd_unit_dir']",
+          "volumes": [
+            "'assessors:/Assessor-CLI'"
+          ]
+        },
+        "complyadm::runtime::volume['assessors']": {
+          "ensure": "'present'",
+          "runtime": "$container['runtime']"
+        },
+        "file[$init_env]": {
+          "content": "epp('complyadm/comply_env.epp', { env_vars => $container['env_vars'] })",
+          "ensure": "file",
+          "group": "$config['installation_group']",
+          "notify": "Complyadm::Runtime::Run[$container['name']]",
+          "owner": "$config['installation_user']",
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
+        }
       }
     }
   },
-  "ui_assessor_init": {
-    "variables": {},
-    "resources": {
-      "complyadm::runtime::run[$container['name']]": {
-        "after": "$container['after']",
-        "env_file": [
-          "$init_env"
-        ],
-        "extra_parameters": "$container['extra_parameters']",
-        "extra_systemd_parameters": "$container['extra_systemd_parameters']",
-        "image": "$container['image']",
-        "install_runtime": "$container['install_runtime']",
-        "installation_dir": "$config['installation_dir']",
-        "installation_group": "$config['installation_group']",
-        "installation_user": "$config['installation_user']",
-        "net": "$container['net']",
-        "pull_on_start": "false",
-        "require": [
-          "File[$init_env]"
-        ],
-        "runtime": "$container['runtime']",
-        "systemd_unit_dir": "$config['systemd_unit_dir']",
-        "volumes": [
-          "'assessors:/Assessor-CLI'"
-        ]
-      },
-      "complyadm::runtime::volume['assessors']": {
-        "ensure": "'present'",
-        "runtime": "$container['runtime']"
-      },
-      "file[$init_env]": {
-        "content": "epp('complyadm/comply_env.epp', { env_vars => $container['env_vars'] })",
-        "ensure": "file",
-        "group": "$config['installation_group']",
-        "notify": "Complyadm::Runtime::Run[$container['name']]",
-        "owner": "$config['installation_user']",
-        "seltype": "'container_file_t'",
-        "show_diff": "false"
-      }
-    }
+  "files": {
+    "templates/comply_env.epp": "897f2baf91217fe7",
+    "templates/frontdoor/nginx_conf.epp": "f7b96861564a6f63",
+    "templates/gatekeeper/oauth2_proxy.cfg.epp": "ec9e3d5308834f63",
+    "templates/identity/puppet-realm.json.epp": "9b28b91ffc6ac061",
+    "templates/log4j2.properties.epp": "a271cca143f77266",
+    "templates/logrotate.epp": "d5b9b606eaaa0cc6",
+    "templates/mtls_proxy/nginx_conf.epp": "2754228b8ea1cfe1",
+    "templates/postgres/initdb.sql.epp": "6e421009d61cf53a",
+    "templates/postgres/postgresql.conf.epp": "d12cc8a4fab71478",
+    "templates/redis/redis.conf.epp": "a47aa1653f007ec9",
+    "templates/runtime/service-start-script.epp": "7e96532efe6583d9",
+    "templates/runtime/service-stop-script.epp": "5c7073ff7f1e833a",
+    "templates/runtime/service-watchdog.epp": "d3a01a7733bd9d36",
+    "templates/runtime/service.epp": "1879632040142c37",
+    "files/comply_certs/cert_chain.pem": "aa71b425b6a51e38",
+    "files/comply_certs/crl.pem": "cc0fb4c21910bd81",
+    "files/comply_certs/private_key.pem": "2cf631e29ab87cd5",
+    "files/healthchecks/nginx-healthcheck.sh": "ca131952d999f966",
+    "files/pe_certs/ca.crt": "8944ea1031367945",
+    "files/pe_certs/tls.crt": "8944ea1031367945",
+    "files/pe_certs/tls.key": "2cf631e29ab87cd5",
+    "files/postgres/pg_hba.conf": "7c730487f009ef0c",
+    "files/postgres/pg_hba_post_install.conf": "4eace0d6ca61b7db",
+    "files/support_bundle/sql/table_sizes.sql": "ce05fe8dbedf99d3",
+    "data/images.yaml": "adfcc8c5a2aab274",
+    "plans/upgrade.pp": "4e222cd03b84255b",
+    "plans/upgrade/cleanup.pp": "4eee317d99e9f3c1",
+    "plans/upgrade/db_backup.pp": "b442a7407e2b7979"
   }
 }

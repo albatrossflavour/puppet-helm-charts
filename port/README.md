@@ -9,7 +9,7 @@ port/diff_snapshots.py port/snapshots/cd4peadm-5.18.0.config.json /tmp/new/cd4pe
 
 `/path/to/modules` holds the module and its dependencies, as `bolt module install` lays them out.
 
-`*.config.json` is the module's own `config()` evaluated by Bolt against the fixture data in `fixtures/`: images, env vars, commands, and the rendered realm and oauth2-proxy files. `*.resources.json` is what each component manifest declares, read from its source: mounts, ports, paths, and files.
+`*.config.json` is the module's own `config()` evaluated by Bolt against the fixture data in `fixtures/`: images, env vars, commands, and the rendered realm and oauth2-proxy files. `*.resources.json` is what each component manifest declares, read from its source: mounts, ports, paths, and files. It also checksums every template, static file, and upgrade plan, so a changed file is named even when nothing else gives it away.
 
 `snapshots/` holds the releases the charts were last ported from.
 
