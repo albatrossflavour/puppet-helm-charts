@@ -10,19 +10,19 @@
   "enable_healthchecks": true,
   "image_registry": "gcr.io/platform-services-297419/compliance",
   "images": {
-    "comply_assessor_upgrade": "gcr.io/platform-services-297419/compliance/scarp:v3.9.0",
-    "comply_frontdoor": "gcr.io/platform-services-297419/compliance/nginx:v3.9.0",
-    "comply_gatekeeper": "gcr.io/platform-services-297419/compliance/oauth2-proxy:v3.9.0",
-    "comply_graphql": "gcr.io/platform-services-297419/compliance/hasura-graphql-engine:v3.9.0",
-    "comply_graphql_init": "gcr.io/platform-services-297419/compliance/hasura-metadata:v3.9.0",
-    "comply_identity": "gcr.io/platform-services-297419/compliance/comply-identity:v3.9.0",
-    "comply_mtls_proxy": "gcr.io/platform-services-297419/compliance/nginx:v3.9.0",
-    "comply_postgres": "gcr.io/platform-services-297419/compliance/postgres:v3.9.0",
-    "comply_redis": "gcr.io/platform-services-297419/compliance/redis:v3.9.0",
-    "comply_scarpy": "gcr.io/platform-services-297419/compliance/scarp:v3.9.0",
+    "comply_assessor_upgrade": "gcr.io/platform-services-297419/compliance/scarp:v3.9.1",
+    "comply_frontdoor": "gcr.io/platform-services-297419/compliance/nginx:v3.9.1",
+    "comply_gatekeeper": "gcr.io/platform-services-297419/compliance/oauth2-proxy:v3.9.1",
+    "comply_graphql": "gcr.io/platform-services-297419/compliance/hasura-graphql-engine:v3.9.1",
+    "comply_graphql_init": "gcr.io/platform-services-297419/compliance/hasura-metadata:v3.9.1",
+    "comply_identity": "gcr.io/platform-services-297419/compliance/comply-identity:v3.9.1",
+    "comply_mtls_proxy": "gcr.io/platform-services-297419/compliance/nginx:v3.9.1",
+    "comply_postgres": "gcr.io/platform-services-297419/compliance/postgres:v3.9.1",
+    "comply_redis": "gcr.io/platform-services-297419/compliance/redis:v3.9.1",
+    "comply_scarpy": "gcr.io/platform-services-297419/compliance/scarp:v3.9.1",
     "comply_scarpy_assessor_init": "gcr.io/platform-services-297419/compliance/comply-assessor:4.65.0",
-    "comply_scarpy_init": "gcr.io/platform-services-297419/compliance/scarp-init:v3.9.0",
-    "comply_ui": "gcr.io/platform-services-297419/compliance/comply-ui:v3.9.0",
+    "comply_scarpy_init": "gcr.io/platform-services-297419/compliance/scarp-init:v3.9.1",
+    "comply_ui": "gcr.io/platform-services-297419/compliance/comply-ui:v3.9.1",
     "comply_ui_assessor_init": "gcr.io/platform-services-297419/compliance/comply-assessor:4.65.0"
   },
   "install_runtime": true,
@@ -64,7 +64,7 @@
                 "Type": "simple"
               }
             },
-            "image": "gcr.io/platform-services-297419/compliance/scarp:v3.9.0",
+            "image": "gcr.io/platform-services-297419/compliance/scarp:v3.9.1",
             "install_runtime": true,
             "name": "comply_assessor_upgrade",
             "net": "comply",
@@ -89,7 +89,7 @@
               }
             },
             "healthcheck": "timeout 3 /health/nginx_healthcheck.sh",
-            "image": "gcr.io/platform-services-297419/compliance/nginx:v3.9.0",
+            "image": "gcr.io/platform-services-297419/compliance/nginx:v3.9.1",
             "install_runtime": true,
             "name": "comply_frontdoor",
             "net": "comply",
@@ -116,7 +116,7 @@
             "cmd": "--config=/run/secrets/oauth2_proxy.cfg",
             "env_vars": {},
             "extra_parameters": "--log-driver=journald --log-opt tag=comply",
-            "image": "gcr.io/platform-services-297419/compliance/oauth2-proxy:v3.9.0",
+            "image": "gcr.io/platform-services-297419/compliance/oauth2-proxy:v3.9.1",
             "install_runtime": true,
             "mnt_secrets": {
               "/run/secrets/oauth2_proxy.cfg": "oauth2_proxy.cfg"
@@ -161,7 +161,7 @@
               }
             },
             "healthcheck": "timeout 3 curl --fail --connect-timeout 3 -s localhost:8080/healthz",
-            "image": "gcr.io/platform-services-297419/compliance/hasura-graphql-engine:v3.9.0",
+            "image": "gcr.io/platform-services-297419/compliance/hasura-graphql-engine:v3.9.1",
             "install_runtime": true,
             "name": "comply_graphql",
             "net": "comply",
@@ -200,7 +200,7 @@
                 "Type": "simple"
               }
             },
-            "image": "gcr.io/platform-services-297419/compliance/hasura-metadata:v3.9.0",
+            "image": "gcr.io/platform-services-297419/compliance/hasura-metadata:v3.9.1",
             "install_runtime": true,
             "name": "comply_graphql_init",
             "net": "comply",
@@ -259,7 +259,7 @@
               }
             },
             "healthcheck": "timeout 3 curl --fail -LI --connect-timeout 3 -s localhost:9000/auth/health/live",
-            "image": "gcr.io/platform-services-297419/compliance/comply-identity:v3.9.0",
+            "image": "gcr.io/platform-services-297419/compliance/comply-identity:v3.9.1",
             "install_runtime": true,
             "mnt_secrets": {
               "/opt/keycloak/data/import/Puppet-realm.json": "Puppet_realm.json"
@@ -292,7 +292,7 @@
               }
             },
             "healthcheck": "timeout 3 /health/nginx_healthcheck.sh",
-            "image": "gcr.io/platform-services-297419/compliance/nginx:v3.9.0",
+            "image": "gcr.io/platform-services-297419/compliance/nginx:v3.9.1",
             "install_runtime": true,
             "name": "comply_mtls_proxy",
             "net": "comply",
@@ -326,7 +326,7 @@
               }
             },
             "healthcheck": "sh -c 'redis-cli -a $REDIS_PASSWORD --no-auth-warning -t 5 ping | grep -q PONG'",
-            "image": "gcr.io/platform-services-297419/compliance/redis:v3.9.0",
+            "image": "gcr.io/platform-services-297419/compliance/redis:v3.9.1",
             "install_runtime": true,
             "name": "comply_redis",
             "net": "comply",
@@ -377,7 +377,7 @@
               "WS_REPORT_PROCESSOR_URL": "redis://:fixture-redis-password@comply_redis:6379/"
             },
             "extra_parameters": "--log-driver=journald --log-opt tag=comply",
-            "image": "gcr.io/platform-services-297419/compliance/scarp:v3.9.0",
+            "image": "gcr.io/platform-services-297419/compliance/scarp:v3.9.1",
             "install_runtime": true,
             "name": "comply_scarpy",
             "net": "comply",
@@ -443,7 +443,7 @@
                 "Type": "simple"
               }
             },
-            "image": "gcr.io/platform-services-297419/compliance/scarp-init:v3.9.0",
+            "image": "gcr.io/platform-services-297419/compliance/scarp-init:v3.9.1",
             "install_runtime": true,
             "name": "comply_scarpy_init",
             "net": "comply",
@@ -481,7 +481,7 @@
               }
             },
             "healthcheck": "timeout 3 pg_isready -U comply -d comply -h 127.0.0.1 -p 5432",
-            "image": "gcr.io/platform-services-297419/compliance/postgres:v3.9.0",
+            "image": "gcr.io/platform-services-297419/compliance/postgres:v3.9.1",
             "install_runtime": true,
             "mnt_secrets": {
               "/docker-entrypoint-initdb.d/initdb.sql": "initdb.sql"
@@ -512,7 +512,7 @@
               "ASSESSOR_VERSION": "4.65.0",
               "AUTH_PORT": "443",
               "CHECK_UPDATES": "false",
-              "COMPLY_VERSION": "3.9.0",
+              "COMPLY_VERSION": "3.9.1",
               "FEATURES": "cem_up_sell",
               "HOST_FQDN": "scm.fixture.test",
               "HTTPS_PORT": "443",
@@ -521,7 +521,7 @@
               "SCARP_API": "https://scm.fixture.test:443/api/"
             },
             "extra_parameters": "--log-driver=journald --log-opt tag=comply",
-            "image": "gcr.io/platform-services-297419/compliance/comply-ui:v3.9.0",
+            "image": "gcr.io/platform-services-297419/compliance/comply-ui:v3.9.1",
             "install_runtime": true,
             "name": "comply_ui",
             "net": "comply",

@@ -7,7 +7,7 @@ Parts of this repository are derived from two Puppet modules, both published
 under the Apache License, Version 2.0:
 
   puppetlabs-cd4peadm   5.18.0
-  puppetlabs-complyadm  3.9.0
+  puppetlabs-complyadm  3.9.1
 
 The derived files are the configuration under charts/cd4pe/files and
 charts/scm/files, and the environment and container settings in the chart
