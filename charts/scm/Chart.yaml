@@ -12,5 +12,6 @@ keywords:
   - compliance
 home: https://www.puppet.com/docs/security-compliance-management/
 annotations:
+  artifacthub.io/license: Apache-2.0
   # The Bolt module release this chart was last ported from.
   puppet-helm-charts/ported-from: complyadm 3.9.0

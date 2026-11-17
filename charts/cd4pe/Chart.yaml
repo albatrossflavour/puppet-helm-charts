@@ -11,5 +11,6 @@ keywords:
   - continuous-delivery
 home: https://www.puppet.com/docs/continuous-delivery/
 annotations:
+  artifacthub.io/license: Apache-2.0
   # The Bolt module release this chart was last ported from.
   puppet-helm-charts/ported-from: cd4peadm 5.18.0

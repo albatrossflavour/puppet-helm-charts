@@ -47,3 +47,9 @@ helm template t charts/cd4pe -f charts/cd4pe/ci/test-values.yaml | kubeconform -
 ```
 
 Several of the bugs found while writing the charts only showed up on a real install, so install into a scratch namespace and run `helm test` before trusting a change.
+
+## Licence
+
+Apache-2.0, the same licence as the two Puppet modules the charts are ported from. `NOTICE` lists what was derived from them.
+
+The licence covers the charts, not the products. CD4PE and SCM are Puppet's, under Puppet's own terms.
