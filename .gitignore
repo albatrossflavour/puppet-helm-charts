@@ -2,3 +2,5 @@ rendered/
 *.tgz
 charts/*/charts/
 .DS_Store
+__pycache__/
+*.pyc
