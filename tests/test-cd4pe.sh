@@ -120,6 +120,20 @@ expect_code 400 "POST /cd4pe/api/v1/user/signup with sign-up on" \
   -X POST -H 'Content-Type: application/json' -d '{}' "https://${HOST}/cd4pe/api/v1/user/signup"
 pass "signup.enabled=true lets sign-up through to the backend"
 
+# Behind the ingress the UI's peer is the controller pod, in kind's pod subnet.
+log "Sign-up open only to signup.allowedSources"
+helm upgrade "$RELEASE" "${REPO_DIR}/charts/cd4pe" -n "$NAMESPACE" -f "$VALUES" \
+  --set "signup.allowedSources={192.0.2.0/24}" --wait --timeout "$INSTALL_TIMEOUT" >/dev/null
+for header in X-Forwarded-For X-Real-IP CF-Connecting-IP; do
+  expect_code 403 "POST /cd4pe/signup with ${header} in allowedSources" -H "${header}: 192.0.2.1" \
+    -X POST -H 'Content-Type: application/json' -d "$SIGNUP_BODY" "https://${HOST}/cd4pe/signup"
+done
+helm upgrade "$RELEASE" "${REPO_DIR}/charts/cd4pe" -n "$NAMESPACE" -f "$VALUES" \
+  --set "signup.allowedSources={10.244.0.0/16}" --wait --timeout "$INSTALL_TIMEOUT" >/dev/null
+expect_code 400 "POST /cd4pe/signup from a peer in allowedSources" \
+  -X POST -H 'Content-Type: application/json' -d "$SIGNUP_BODY" "https://${HOST}/cd4pe/signup"
+pass "signup.allowedSources lets only its sources through, whatever the forwarding headers say"
+
 log "Upgrade"
 before="$(secret_checksum "$RELEASE")"
 helm upgrade "$RELEASE" "${REPO_DIR}/charts/cd4pe" -n "$NAMESPACE" -f "$VALUES" \

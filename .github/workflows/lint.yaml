@@ -46,3 +46,15 @@ jobs:
         run: port/generate_files.py ${{ matrix.chart }} --check
       - name: The chart matches the module
         run: port/check_match.py ${{ matrix.chart }}
+
+  # Runs the UI's nginx config for each sign-up setting in the real UI image
+  # and checks who reaches sign-up. Needs docker but no cluster.
+  cd4pe-signup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Install PyYAML
+        run: python3 -m pip install --quiet pyyaml
+      - name: Sign-up rules in the UI's nginx
+        run: tests/test-cd4pe-signup.sh

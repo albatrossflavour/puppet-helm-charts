@@ -55,7 +55,35 @@ CD4PE lets anyone who can reach the UI create an account, and that account can c
 
 With it off, the UI answers 403 for the sign-up page (`/signup` and `/cd4pe/signup`), for `POST /cd4pe/signup` (the `PfiSignup` call the form makes), and for `POST /cd4pe/api/v1/user/signup`. The rule matches any path segment named `signup`, so a workspace, project, or repository called `signup` gets a 403 too.
 
-Login, root login, password reset, and adding existing users to a workspace aren't affected. CD4PE has no invitations: a workspace admin can only add accounts that already exist. So with sign-up off, a new local account comes from LDAP or SAML, or from setting `signup.enabled=true` while that person signs up and turning it off again.
+Login, root login, password reset, and adding existing users to a workspace aren't affected. CD4PE has no invitations, and the root account's "add user" in the UI goes through the same sign-up handler, so with sign-up closed to everyone no local account can be made at all. A new local account then comes from LDAP or SAML, from `signup.allowedSources`, or from setting `signup.enabled=true` while that person signs up and turning it off again.
+
+### Sign-up from a trusted network
+
+`signup.allowedSources` keeps sign-up closed except to clients from the CIDRs listed, so an admin on the LAN can add users while the internet still gets a 403. Every other client gets the same 403 as before, on the same paths.
+
+The address checked has to be one the client can't choose. By default it's the UI pod's TCP peer, which is fine if clients connect straight to the pod but behind an ingress is the controller. Behind a proxy, set `signup.clientAddress.header` to a header that proxy always overwrites with the address of the connection it received, and `signup.clientAddress.trustedProxies` to the proxy's addresses. The header is only believed from those peers, and a missing or malformed value is refused.
+
+Don't use `X-Real-IP` or `X-Forwarded-For` from ingress-nginx if it has `enable-real-ip` or `use-forwarded-headers` on. The controller then takes the client address from the request's own `X-Forwarded-For`, trusting every source unless `proxy-real-ip-cidr` says otherwise, and passes that on, so a client can claim any address. `$realip_remote_addr` is the connection's address before that rewrite. Set your own header to it on the UI's Ingress, which needs snippet annotations allowed:
+
+```yaml
+# On the UI's Ingress
+annotations:
+  nginx.ingress.kubernetes.io/configuration-snippet: |
+    proxy_set_header X-Ingress-Peer-Addr $realip_remote_addr;
+```
+
+```yaml
+# In the chart's values
+signup:
+  allowedSources:
+    - 192.168.0.0/16
+  clientAddress:
+    header: X-Ingress-Peer-Addr
+    trustedProxies:
+      - 10.42.0.0/16 # the pod network the controller runs in
+```
+
+`proxy_set_header` replaces any header of the same name the client sent. Check what the controller sees for each way in: with `externalTrafficPolicy: Cluster`, LAN clients usually arrive from a node's address rather than their own, and a tunnel such as `cloudflared` running in the cluster arrives from its pod's address, which must not be in `allowedSources`.
 
 ## Values
 
@@ -66,7 +94,10 @@ Login, root login, password reset, and adding existing users to a workspace aren
 | `hostname` | none | UI hostname. Required |
 | `backendHostname` | none | Webhook and job hardware hostname. Required |
 | `rootUser.email` | none | Root login. Required |
-| `signup.enabled` | `false` | Allow self sign-up. See above |
+| `signup.enabled` | `false` | Allow self sign-up for everyone. See above |
+| `signup.allowedSources` | `[]` | CIDRs that can still sign up with `signup.enabled` false |
+| `signup.clientAddress.header` | empty | Header holding the true client address, set by the proxy in front |
+| `signup.clientAddress.trustedProxies` | `[]` | Proxies whose `signup.clientAddress.header` is believed |
 | `auth.existingSecret` | empty | Use your own Secret for the passwords and keys |
 | `license.existingSecret` | empty | Secret holding `license.lic` |
 | `ingress.className` | empty | Ingress class |

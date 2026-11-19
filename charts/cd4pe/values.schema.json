@@ -55,6 +55,29 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        },
+        "allowedSources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9A-Fa-f.:]+(/[0-9]{1,3})?$"
+          }
+        },
+        "clientAddress": {
+          "type": "object",
+          "properties": {
+            "header": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9-]*$"
+            },
+            "trustedProxies": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9A-Fa-f.:]+(/[0-9]{1,3})?$"
+              }
+            }
+          }
         }
       }
     },

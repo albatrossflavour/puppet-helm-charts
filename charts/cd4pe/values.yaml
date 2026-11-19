@@ -37,6 +37,25 @@ signup:
   # and /cd4pe/api/v1/user/signup. New local accounts then come from LDAP or
   # SAML, or from turning this on while someone signs up.
   enabled: false
+  # -- With enabled false, still let clients from these CIDRs reach sign-up.
+  # The root account's "add user" in the UI goes through sign-up too, so
+  # without this no local account can be made at all. Empty means sign-up is
+  # refused for everyone. The address checked is the UI pod's TCP peer, which
+  # behind an ingress is the controller, unless clientAddress says otherwise.
+  allowedSources: []
+  clientAddress:
+    # -- A request header holding the true client address, set by the proxy
+    # in front of the UI. Only use a header that proxy always overwrites with
+    # the address of the connection it received, never one it copies or
+    # derives from what the client sent. With ingress-nginx and enable-real-ip
+    # (or use-forwarded-headers) on, X-Real-IP and X-Forwarded-For come from
+    # the client, so set a header of your own to $realip_remote_addr instead.
+    # Empty means the TCP peer is used.
+    header: ""
+    # -- CIDRs of the proxies whose clientAddress.header is believed, normally
+    # the ingress controller pods. From any other peer the header is ignored
+    # and the peer's own address is checked. Required when header is set.
+    trustedProxies: []
 
 auth:
   # -- Name of an existing Secret to use instead of generating one. It must

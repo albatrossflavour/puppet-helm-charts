@@ -81,6 +81,13 @@ def cd4pe_nginx(text):
         r"\1@@SIGNUP_BLOCK@@\n\n\1\2",
         "the place for the sign-up block",
     )
+    # The sign-up source check needs geo and map, which only go in http.
+    text = sub(
+        text,
+        r"^([ \t]*)(# Server config)",
+        r"\1@@SIGNUP_HTTP@@\n\n\1\2",
+        "the place for the sign-up source check",
+    )
     return header(
         "cd4peadm templates/nginx/base.conf.template.epp",
         [
@@ -88,10 +95,12 @@ def cd4pe_nginx(text):
             "webhook server block removed, the backend ingress goes straight to pipelinesinfra:8000",
             "logs go to stdout and stderr instead of /app/logs",
             "a placeholder for the sign-up block ahead of the rewrites",
+            "a placeholder in http for the sign-up source check",
         ],
         [
             "CD4PE_SERVICE and QUERY_SERVICE are filled in by the image's envsubst step at start.",
-            "The chart replaces the SIGNUP_BLOCK placeholder, with a 403 for self sign-up unless signup.enabled is true.",
+            "The chart replaces the SIGNUP_BLOCK placeholder, with a 403 for self sign-up unless signup.enabled is true,",
+            "and SIGNUP_HTTP with the check of the client address against signup.allowedSources.",
         ],
     ) + tidy(text)
 

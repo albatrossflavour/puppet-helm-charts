@@ -4,8 +4,10 @@
 #   - webhook server block removed, the backend ingress goes straight to pipelinesinfra:8000
 #   - logs go to stdout and stderr instead of /app/logs
 #   - a placeholder for the sign-up block ahead of the rewrites
+#   - a placeholder in http for the sign-up source check
 # CD4PE_SERVICE and QUERY_SERVICE are filled in by the image's envsubst step at start.
-# The chart replaces the SIGNUP_BLOCK placeholder, with a 403 for self sign-up unless signup.enabled is true.
+# The chart replaces the SIGNUP_BLOCK placeholder, with a 403 for self sign-up unless signup.enabled is true,
+# and SIGNUP_HTTP with the check of the client address against signup.allowedSources.
 events {
     worker_connections 1024;
 }
@@ -21,6 +23,8 @@ http {
         default @cd4pebackend;
         GET @reactui;
     }
+
+    @@SIGNUP_HTTP@@
 
     # Server config
     server {

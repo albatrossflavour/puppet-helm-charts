@@ -3,13 +3,75 @@ is true the UI's nginx refuses every path that reaches the backend's sign-up
 handlers: the /signup page, POST /cd4pe/signup (the PfiSignup op the sign-up
 form sends) and POST /cd4pe/api/v1/user/signup. It matches on $uri, which nginx
 has already decoded and normalised, and it sits ahead of the rewrites, which
-would otherwise redirect a GET for /cd4pe/signup before any location runs. */ -}}
+would otherwise redirect a GET for /cd4pe/signup before any location runs.
+
+signup.allowedSources lets some clients through. The address checked is the
+TCP peer, or, when the peer is in clientAddress.trustedProxies, the address in
+clientAddress.header. Anything that isn't an address (a missing header, a
+list) counts as 255.255.255.255 in geo, so it falls to the default and is
+refused. The schema keeps the CIDRs and the header name to characters that
+can't break out of the nginx config. */ -}}
+{{- $signup := .Values.signup -}}
+{{- $sources := $signup.allowedSources | default list -}}
+{{- $clientAddress := $signup.clientAddress | default dict -}}
+{{- $header := $clientAddress.header | default "" -}}
+{{- $proxies := $clientAddress.trustedProxies | default list -}}
+{{- if and $header (not $proxies) -}}
+{{- fail "signup.clientAddress.trustedProxies is required when signup.clientAddress.header is set, or the header would be believed from anyone" -}}
+{{- end -}}
+{{- if and $proxies (not $header) -}}
+{{- fail "signup.clientAddress.trustedProxies is set but signup.clientAddress.header is empty" -}}
+{{- end -}}
+{{- $signupHttp := "# No sign-up source check (signup.allowedSources is empty, or signup.enabled is true)." -}}
 {{- $signupBlock := "# Self sign-up is open (signup.enabled is true in the chart)." -}}
-{{- if not .Values.signup.enabled -}}
+{{- if not $signup.enabled -}}
+{{- if $sources -}}
+{{- $allowed := "" -}}
+{{- range $sources -}}
+{{- $allowed = printf "%s\n        %s 1;" $allowed . -}}
+{{- end -}}
+{{- if $header -}}
+{{- $trusted := "" -}}
+{{- range $proxies -}}
+{{- $trusted = printf "%s\n        %s 1;" $trusted . -}}
+{{- end -}}
+{{- $signupHttp = printf `# Sign-up is open only to signup.allowedSources. The address checked is
+    # the %s header when the peer is in signup.clientAddress.trustedProxies,
+    # and the peer itself otherwise.
+    geo $signup_peer_trusted {
+        default 0;%s
+    }
+    map $signup_peer_trusted $signup_client {
+        1       $http_%s;
+        default $remote_addr;
+    }
+    geo $signup_client $signup_source_allowed {
+        default 0;%s
+    }` $header $trusted ($header | lower | replace "-" "_") $allowed -}}
+{{- else -}}
+{{- $signupHttp = printf `# Sign-up is open only to signup.allowedSources. The address checked is
+    # the peer, the address of the connection to this nginx.
+    geo $signup_source_allowed {
+        default 0;%s
+    }` $allowed -}}
+{{- end -}}
+{{- $signupBlock = `# Self sign-up is closed except to signup.allowedSources (signup.enabled is false in the chart).
+        set $signup_refused 0;
+        if ($uri ~* "/signup([/;.]|$)") {
+            set $signup_refused 1;
+        }
+        if ($signup_source_allowed) {
+            set $signup_refused 0;
+        }
+        if ($signup_refused) {
+            return 403;
+        }` -}}
+{{- else -}}
 {{- $signupBlock = `# Self sign-up is closed (signup.enabled is false in the chart).
         if ($uri ~* "/signup([/;.]|$)") {
             return 403;
         }` -}}
+{{- end -}}
 {{- end -}}
 apiVersion: v1
 kind: ConfigMap
@@ -19,7 +81,7 @@ metadata:
     {{- include "cd4pe.labels" . | nindent 4 }}
 data:
   base.conf.template: |
-    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/base.conf.template" | replace "@@SIGNUP_BLOCK@@" $signupBlock | nindent 4) "" }}
+    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/base.conf.template" | replace "@@SIGNUP_BLOCK@@" $signupBlock | replace "@@SIGNUP_HTTP@@" $signupHttp | nindent 4) "" }}
   log4j2.properties: |
     {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/log4j2.properties" | nindent 4) "" }}
   postgresql.conf: |
