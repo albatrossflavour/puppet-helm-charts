@@ -73,14 +73,26 @@ def cd4pe_nginx(text):
     text = sub(text, r"^.*Strict-Transport-Security.*\n", "", "the HSTS header")
     text = sub(text, r"access_log /app/logs/access\.log;", "access_log /dev/stdout;", "the access log path")
     text = sub(text, r"error_log /app/logs/error\.log;", "error_log /dev/stderr;", "the error log path")
+    # The sign-up block goes ahead of every rewrite, because the GET rewrites
+    # redirect /cd4pe/signup before any location is chosen.
+    text = sub(
+        text,
+        r"^([ \t]*)(# Migrated pages redirects)",
+        r"\1@@SIGNUP_BLOCK@@\n\n\1\2",
+        "the place for the sign-up block",
+    )
     return header(
         "cd4peadm templates/nginx/base.conf.template.epp",
         [
             "TLS removed from :3000, the ingress controller terminates it",
             "webhook server block removed, the backend ingress goes straight to pipelinesinfra:8000",
             "logs go to stdout and stderr instead of /app/logs",
+            "a placeholder for the sign-up block ahead of the rewrites",
         ],
-        ["CD4PE_SERVICE and QUERY_SERVICE are filled in by the image's envsubst step at start."],
+        [
+            "CD4PE_SERVICE and QUERY_SERVICE are filled in by the image's envsubst step at start.",
+            "The chart replaces the SIGNUP_BLOCK placeholder, with a 403 for self sign-up unless signup.enabled is true.",
+        ],
     ) + tidy(text)
 
 

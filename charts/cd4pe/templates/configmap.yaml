@@ -1,3 +1,16 @@
+{{- /* CD4PE has no setting to turn self sign-up off, so unless signup.enabled
+is true the UI's nginx refuses every path that reaches the backend's sign-up
+handlers: the /signup page, POST /cd4pe/signup (the PfiSignup op the sign-up
+form sends) and POST /cd4pe/api/v1/user/signup. It matches on $uri, which nginx
+has already decoded and normalised, and it sits ahead of the rewrites, which
+would otherwise redirect a GET for /cd4pe/signup before any location runs. */ -}}
+{{- $signupBlock := "# Self sign-up is open (signup.enabled is true in the chart)." -}}
+{{- if not .Values.signup.enabled -}}
+{{- $signupBlock = `# Self sign-up is closed (signup.enabled is false in the chart).
+        if ($uri ~* "/signup([/;.]|$)") {
+            return 403;
+        }` -}}
+{{- end -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,7 +19,7 @@ metadata:
     {{- include "cd4pe.labels" . | nindent 4 }}
 data:
   base.conf.template: |
-    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/base.conf.template" | nindent 4) "" }}
+    {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/base.conf.template" | replace "@@SIGNUP_BLOCK@@" $signupBlock | nindent 4) "" }}
   log4j2.properties: |
     {{- regexReplaceAll "(?m)[ \\t]+$" (.Files.Get "files/log4j2.properties" | nindent 4) "" }}
   postgresql.conf: |

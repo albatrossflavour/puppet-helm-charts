@@ -39,5 +39,19 @@ spec:
                 name: {{ include "cd4pe.fullname" $root }}-{{ .service }}
                 port:
                   name: {{ .port }}
+          {{- /* The backend hostname goes straight to pipelinesinfra, which
+          serves sign-up too. Send those paths to the UI, whose nginx refuses
+          them. */}}
+          {{- if and (eq .suffix "backend") (not $root.Values.signup.enabled) }}
+          {{- range list "/signup" "/api/v1/user/signup" }}
+          - path: {{ . }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "cd4pe.fullname" $root }}-ui
+                port:
+                  name: http
+          {{- end }}
+          {{- end }}
 {{- end }}
 {{- end }}

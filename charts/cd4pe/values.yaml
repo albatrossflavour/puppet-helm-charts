@@ -30,6 +30,15 @@ rootUser:
   # -- Login email of the root account. Required.
   email: ""
 
+signup:
+  # -- Let anyone who can reach the UI create an account, and with it a
+  # workspace. CD4PE has no setting for this, so when it is false the chart
+  # closes it at the UI's nginx, which answers 403 for /signup, /cd4pe/signup
+  # and /cd4pe/api/v1/user/signup, and on the backend hostname for /signup and
+  # /api/v1/user/signup. New local accounts then come from LDAP or SAML, or
+  # from turning this on while someone signs up.
+  enabled: false
+
 auth:
   # -- Name of an existing Secret to use instead of generating one. It must
   # hold the keys root-password, secret-key, postgres-password,

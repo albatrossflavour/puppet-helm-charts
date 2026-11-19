@@ -3,7 +3,9 @@
 #   - TLS removed from :3000, the ingress controller terminates it
 #   - webhook server block removed, the backend ingress goes straight to pipelinesinfra:8000
 #   - logs go to stdout and stderr instead of /app/logs
+#   - a placeholder for the sign-up block ahead of the rewrites
 # CD4PE_SERVICE and QUERY_SERVICE are filled in by the image's envsubst step at start.
+# The chart replaces the SIGNUP_BLOCK placeholder, with a 403 for self sign-up unless signup.enabled is true.
 events {
     worker_connections 1024;
 }
@@ -54,6 +56,8 @@ http {
         # the CSP header and the page.
         add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'self'" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+        @@SIGNUP_BLOCK@@
 
         # Migrated pages redirects
         rewrite ^/cd4pe/([^/]+)/jobs/(\d+)$ /$1/code-delivery/jobs/$2 redirect;
