@@ -2,7 +2,7 @@ apiVersion: v2
 name: cd4pe
 description: Continuous Delivery for Puppet Enterprise on Kubernetes. Unofficial and unsupported.
 type: application
-version: 0.4.0
+version: 0.4.1
 appVersion: "5.19.0"
 kubeVersion: ">=1.25.0-0"
 keywords:

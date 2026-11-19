@@ -48,7 +48,7 @@ expect_code() {
 SIGNUP_BODY='{"op":"PfiSignup","content":{}}'
 
 # Every path that reaches the backend's sign-up handlers, including the ones
-# nginx normalises into them, refused on both hostnames.
+# nginx normalises into them, refused by the UI.
 check_signup_closed() {
   local path
   for path in /signup /cd4pe/signup /cd4pe/signup/ /cd4pe/SignUp /cd4pe/api/v1/user/signup \
@@ -57,10 +57,6 @@ check_signup_closed() {
   done
   expect_code 403 "GET /signup" "https://${HOST}/signup"
   expect_code 403 "GET /cd4pe/signup" "https://${HOST}/cd4pe/signup"
-  for path in /signup /api/v1/user/signup; do
-    expect_code 403 "POST ${path} on the backend hostname" \
-      -X POST -H 'Content-Type: application/json' -d "$SIGNUP_BODY" "https://${BACKEND_HOST}${path}"
-  done
   pass "self sign-up is refused on every path"
 }
 

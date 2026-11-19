@@ -53,7 +53,7 @@ Tested against PE 2025.11.3 as far as the integration: CD4PE discovered the prim
 
 CD4PE lets anyone who can reach the UI create an account, and that account can create its own workspace. Neither the product nor `cd4peadm` has a setting to turn this off, so the chart closes it at the UI's nginx unless `signup.enabled` is `true`.
 
-With it off, the UI answers 403 for the sign-up page (`/signup` and `/cd4pe/signup`), for `POST /cd4pe/signup` (the `PfiSignup` call the form makes), and for `POST /cd4pe/api/v1/user/signup`. The chart's backend Ingress sends `/signup` and `/api/v1/user/signup` to the UI as well, so the backend hostname refuses them too. If you put your own Ingress in front of the backend, block those two paths on it, because `pipelinesinfra` serves them with no login.
+With it off, the UI answers 403 for the sign-up page (`/signup` and `/cd4pe/signup`), for `POST /cd4pe/signup` (the `PfiSignup` call the form makes), and for `POST /cd4pe/api/v1/user/signup`. The rule matches any path segment named `signup`, so a workspace, project, or repository called `signup` gets a 403 too.
 
 Login, root login, password reset, and adding existing users to a workspace aren't affected. CD4PE has no invitations: a workspace admin can only add accounts that already exist. So with sign-up off, a new local account comes from LDAP or SAML, or from setting `signup.enabled=true` while that person signs up and turning it off again.
 
@@ -125,5 +125,7 @@ A Secret you supplied through `auth.existingSecret` doesn't carry that label, so
 ## Upgrades
 
 A routine upgrade is a chart version bump. Liquibase migrates the schema when `pipelinesinfra` starts, and the credentials job runs again. Take a database backup first, because Helm can roll the images back but not the schema.
+
+Upgrading to 0.4.0 or later turns self sign-up off, because `signup.enabled` defaults to `false`. If an install relied on sign-up to create local accounts, set `signup.enabled: true` before upgrading.
 
 A release that changes the Postgres major version, as 5.15.0 did, needs a dump before and a restore after, and the chart can't do that. Read the CD4PE release notes before every bump.
