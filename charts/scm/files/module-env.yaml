@@ -36,6 +36,7 @@ comply_postgres:
   PGDATA: /bitnami/postgresql/data
 comply_redis: {}
 comply_scarpy:
+  COMPLY_VERSION: 3.10.0
   DB_USER: comply
   DESIRED_SCAN_ENDPOINT: http://@@FULLNAME@@-scarpy:8088/api/v3/pe/task/ciscatscan/runScheduledScan
   INTROSPECTION_BLOCKED: 'true'
@@ -47,6 +48,7 @@ comply_scarpy:
   PROXY_IDLE_CONN_TIMEOUT: 90s
   PROXY_RESPONSE_HEADER_TIMEOUT: 10s
   PROXY_TLS_HANDSHAKE_TIMEOUT: 10s
+  PUPPETDB_PORT: '8081'
   QUERY_API: http://@@FULLNAME@@-graphql:8080/v1
 comply_scarpy_assessor_init: {}
 comply_scarpy_init:

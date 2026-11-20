@@ -23,7 +23,7 @@ assessor:
   # -- CIS-CAT assessor version. It is the tag of the comply-assessor image
   # and is passed to scarpy and the UI. complyadm 3.9.0 supports 4.65.0,
   # 4.63.0 and 4.60.0.
-  version: "4.65.0"
+  version: "4.68.0"
   image:
     # -- Image name under image.registry.
     repository: comply-assessor
