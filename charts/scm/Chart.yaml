@@ -2,8 +2,8 @@ apiVersion: v2
 name: scm
 description: Puppet Security Compliance Management on Kubernetes. Unofficial and unsupported.
 type: application
-version: 0.2.0
-appVersion: "3.9.1"
+version: 0.3.0
+appVersion: "3.10.0"
 kubeVersion: ">=1.25.0-0"
 keywords:
   - puppet
@@ -16,4 +16,4 @@ sources:
 annotations:
   artifacthub.io/license: Apache-2.0
   # The Bolt module release this chart was last ported from.
-  puppet-helm-charts/ported-from: complyadm 3.9.1
+  puppet-helm-charts/ported-from: complyadm 3.10.0

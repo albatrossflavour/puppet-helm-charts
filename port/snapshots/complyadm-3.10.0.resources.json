@@ -232,6 +232,7 @@
       "resources": {
         "complyadm::runtime::run[$container['name']]": {
           "after": "$container['after']",
+          "cmd": "$container['cmd']",
           "env_file": [
             "$init_env"
           ],
@@ -247,7 +248,10 @@
           "pull_on_start": "false",
           "require": "File[$init_env]",
           "runtime": "$container['runtime']",
-          "systemd_unit_dir": "$config['systemd_unit_dir']"
+          "systemd_unit_dir": "$config['systemd_unit_dir']",
+          "volumes": [
+            "'benchmarks:/Assessor-CLI'"
+          ]
         },
         "file[$init_env]": {
           "content": "epp('complyadm/comply_env.epp', { env_vars => $env_vars })",
@@ -898,7 +902,7 @@
     "files/postgres/pg_hba_post_install.conf": "4eace0d6ca61b7db",
     "files/support_bundle/sql/table_sizes.sql": "ce05fe8dbedf99d3",
     "data/images.yaml": "adfcc8c5a2aab274",
-    "plans/upgrade.pp": "4e222cd03b84255b",
+    "plans/upgrade.pp": "1870299e1388b760",
     "plans/upgrade/cleanup.pp": "4eee317d99e9f3c1",
     "plans/upgrade/db_backup.pp": "b442a7407e2b7979"
   }
