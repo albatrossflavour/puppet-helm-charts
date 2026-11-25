@@ -1,6 +1,6 @@
 # cd4pe
 
-Continuous Delivery for Puppet Enterprise 5.19.0 on Kubernetes. Unofficial, and not supported by Puppet.
+Continuous Delivery for Puppet Enterprise 5.19.1 on Kubernetes. Unofficial, and not supported by Puppet.
 
 It runs the four containers `cd4peadm` runs (`ui`, `pipelinesinfra`, `query`, and `postgres`) with the configuration that module renders.
 
