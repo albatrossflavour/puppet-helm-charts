@@ -16,10 +16,10 @@
   },
   "dump_filename": "cd4pe-postgres-<date>.dump",
   "images": {
-    "pipelinesinfra": "gcr.io/platform-services-297419/cd4pe/continuous-delivery-for-puppet-enterprise:5.19.0",
-    "postgres": "gcr.io/platform-services-297419/cd4pe-postgresql:5.19.0",
-    "query": "gcr.io/platform-services-297419/query-service:5.19.0",
-    "teams_ui": "gcr.io/platform-services-297419/teams-ui:5.19.0"
+    "pipelinesinfra": "gcr.io/platform-services-297419/cd4pe/continuous-delivery-for-puppet-enterprise:5.19.1",
+    "postgres": "gcr.io/platform-services-297419/cd4pe-postgresql:5.19.1",
+    "query": "gcr.io/platform-services-297419/query-service:5.19.1",
+    "teams_ui": "gcr.io/platform-services-297419/teams-ui:5.19.1"
   },
   "roles": {
     "backend": {
@@ -28,7 +28,7 @@
           "backup_dir": "/var/lib/puppetlabs/cd4pe/backups",
           "container": {
             "extra_parameters": null,
-            "image": "gcr.io/platform-services-297419/cd4pe/continuous-delivery-for-puppet-enterprise:5.19.0",
+            "image": "gcr.io/platform-services-297419/cd4pe/continuous-delivery-for-puppet-enterprise:5.19.1",
             "log_volume_name": "pipelinesinfra-logs",
             "name": "pipelinesinfra"
           },
@@ -79,7 +79,7 @@
         "query": {
           "container": {
             "extra_parameters": null,
-            "image": "gcr.io/platform-services-297419/query-service:5.19.0",
+            "image": "gcr.io/platform-services-297419/query-service:5.19.1",
             "log_volume_name": "query-logs",
             "name": "query"
           },
@@ -113,7 +113,7 @@
           "cd4pe_db_username": "cd4pe",
           "container": {
             "extra_parameters": null,
-            "image": "gcr.io/platform-services-297419/cd4pe-postgresql:5.19.0",
+            "image": "gcr.io/platform-services-297419/cd4pe-postgresql:5.19.1",
             "log_volume_name": "postgres-logs",
             "name": "postgres"
           },
@@ -143,7 +143,7 @@
           "console_log_level": "info",
           "container": {
             "extra_parameters": null,
-            "image": "gcr.io/platform-services-297419/teams-ui:5.19.0",
+            "image": "gcr.io/platform-services-297419/teams-ui:5.19.1",
             "log_volume_name": "ui-logs",
             "name": "ui"
           },
@@ -153,7 +153,7 @@
           "max_log_size_mb": 100,
           "nginx_proxy_timeout_secs": 300,
           "runtime": "docker",
-          "teams_ui_version": "5.19.0",
+          "teams_ui_version": "5.19.1",
           "webhook_port": 8000
         }
       },

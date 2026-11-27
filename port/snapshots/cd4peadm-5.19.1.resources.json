@@ -181,7 +181,8 @@
           "ensure": "'file'",
           "group": "'root'",
           "owner": "'root'",
-          "seltype": "'container_file_t'"
+          "seltype": "'container_file_t'",
+          "show_diff": "false"
         }
       }
     },
@@ -299,23 +300,23 @@
     "templates/logrotate.epp": "d5b9b606eaaa0cc6",
     "templates/nginx/base.conf.template.epp": "75c474339913749a",
     "templates/pfi-config.json.epp": "eb476de8aede208c",
-    "templates/postgres/db_update.sql.epp": "e7762f4a49e15f38",
-    "templates/postgres/initdb.sql.epp": "09cf46be52a8de89",
+    "templates/postgres/db_update.sql.epp": "da594bfcb3c308eb",
+    "templates/postgres/initdb.sql.epp": "4a8810f4af352ba9",
     "templates/postgres/postgresql.conf.epp": "4dcafb29a29089a3",
     "templates/query_env.epp": "15660b56352e0dc6",
-    "templates/runtime/service-start-script.epp": "5a752f37cb48b056",
+    "templates/runtime/service-start-script.epp": "0335e5268e8febde",
     "templates/runtime/service-stop-script.epp": "52b38f82c34441db",
     "templates/runtime/service.epp": "651ce56f3361a810",
     "files/external-postgres/setup.sql": "ae9a6ed4fe582290",
     "files/postgres/pg_hba.conf": "07aa39732a9db85e",
     "files/support_bundle/sql/table_sizes.sql": "44a67fa64418f22a",
-    "data/images.yaml": "66b795fe3ece7462",
+    "data/images.yaml": "db59be4322beacc7",
     "plans/upgrade.pp": "8ede6eadc3002969",
     "plans/upgrade/backup_bitnami.pp": "a7e73fb989d52652",
     "plans/upgrade/cleanup.pp": "da1658741b479c59",
     "plans/upgrade/ensure_certs_in_hiera.pp": "97572cff73682c9f",
     "plans/upgrade/restore_postgres.pp": "76f2fdd55c719b12",
     "plans/upgrade/set_default_config_values.pp": "eb3e0152fec6f0bc",
-    "plans/upgrade/update_database.pp": "3f4cd15811a19154"
+    "plans/upgrade/update_database.pp": "3bbd93021baf76a9"
   }
 }
