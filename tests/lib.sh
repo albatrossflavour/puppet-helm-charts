@@ -21,7 +21,14 @@ helm() { command helm --kube-context "$KUBE_CONTEXT" "$@"; }
 
 log() { printf '\n==> %s\n' "$*"; }
 pass() { printf 'PASS  %s\n' "$*"; }
-fail() { printf 'FAIL  %s\n' "$*" >&2; exit 1; }
+# An explicit exit never fires the ERR trap, so a failed check dumps the
+# release's state itself. Without this, a check that fails with every pod
+# Ready leaves nothing to diagnose it from.
+fail() {
+  printf 'FAIL  %s\n' "$*" >&2
+  if [[ -n "${RELEASE:-}" ]]; then dump_state "$RELEASE" >&2; fi
+  exit 1
+}
 
 # curl to a test hostname. Every request for <anything>:443 is sent to the
 # ingress controller's published port, and its self-signed certificate is accepted.
@@ -46,11 +53,16 @@ dump_state() {
   kubectl -n "$NAMESPACE" get pods,jobs,pvc -l "app.kubernetes.io/instance=${release}" -o wide || true
   for pod in $(kubectl -n "$NAMESPACE" get pods -l "app.kubernetes.io/instance=${release}" \
       --field-selector=status.phase!=Succeeded -o name 2>/dev/null); do
-    if ! kubectl -n "$NAMESPACE" wait --for=condition=Ready "$pod" --timeout=1s >/dev/null 2>&1; then
+    # Ready pods too: a check can fail against a release whose pods all look healthy.
+    if kubectl -n "$NAMESPACE" wait --for=condition=Ready "$pod" --timeout=1s >/dev/null 2>&1; then
+      echo "--- ${pod} (ready)"
+    else
       echo "--- ${pod} (not ready)"
-      kubectl -n "$NAMESPACE" logs "$pod" --all-containers --tail=30 2>&1 | cut -c1-300 || true
     fi
+    kubectl -n "$NAMESPACE" logs "$pod" --all-containers --tail=30 2>&1 | cut -c1-300 || true
   done
+  echo "--- recent events"
+  kubectl -n "$NAMESPACE" get events --sort-by=.lastTimestamp 2>&1 | tail -20 | cut -c1-300 || true
 }
 
 # A checksum of a Secret's data, to prove an upgrade left it alone.
