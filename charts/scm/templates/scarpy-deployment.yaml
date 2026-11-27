@@ -7,6 +7,22 @@ metadata:
     {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
 spec:
   replicas: 1
+  # complyadm stops scarpy, runs scarpy-init and starts scarpy again. With one
+  # replica, no surge and one unavailable, the old pod is taken down before the
+  # new one is created, so an older scarpy is not serving while the new
+  # scarpy-init migrates the schema, and graphql-init's wait cannot be answered
+  # by one (a terminating pod leaves the Service's ready endpoints at once).
+  #
+  # Not type: Recreate. Releases before this one have no strategy, so the API
+  # server defaulted rollingUpdate, and Helm's server-side apply leaves that
+  # defaulted block in place when only the type changes. The upgrade is then
+  # refused with "rollingUpdate: Forbidden" and rollingUpdate: null does not
+  # clear it.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       {{- include "scm.componentSelectorLabels" (dict "root" . "component" $component) | nindent 6 }}
