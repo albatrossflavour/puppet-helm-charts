@@ -7,9 +7,10 @@ triggers. It needs Hasura up and the schema scarpy-init creates.
 From complyadm 3.10.0 the module makes it wait for scarpy-init's sentinel file
 on the benchmarks volume. Here that volume is an emptyDir inside the scarpy
 pod, so the job waits for scarpy to accept connections instead. scarpy only
-starts once its scarpy-init initContainer has finished, and scarpy uses the
-Recreate strategy, so no older scarpy pod can answer in its place during an
-upgrade. That holds whether or not the release is installed with --wait.
+starts once its scarpy-init initContainer has finished, and its rollout takes
+the old pod down before the new one is created (see scarpy-deployment.yaml), so
+no older scarpy can answer in its place during an upgrade. That holds whether
+or not the release is installed with --wait.
 */ -}}
 apiVersion: batch/v1
 kind: Job
