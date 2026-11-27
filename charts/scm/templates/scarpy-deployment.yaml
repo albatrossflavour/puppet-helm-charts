@@ -7,6 +7,11 @@ metadata:
     {{- include "scm.componentLabels" (dict "root" . "component" $component) | nindent 4 }}
 spec:
   replicas: 1
+  # complyadm stops scarpy, runs scarpy-init and starts scarpy again. Recreate
+  # does the same, so an older scarpy never serves against a schema the new
+  # scarpy-init is migrating, and graphql-init's wait cannot be answered by one.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "scm.componentSelectorLabels" (dict "root" . "component" $component) | nindent 6 }}

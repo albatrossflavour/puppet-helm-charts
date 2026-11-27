@@ -68,6 +68,9 @@ chart-only-containers:
   - workload: redis
     container: render-redis-conf
     reason: Writes redis.conf with the password. complyadm renders that file on the host.
+  - workload: graphql-init
+    container: wait-for-scarpy
+    reason: Waits for scarpy-init to finish, which complyadm 3.10.0 does by polling a sentinel file on a volume this job cannot mount.
 
 allow:
   - container: comply_gatekeeper
@@ -120,6 +123,15 @@ allow:
     kind: command
     module: "sh -c 'rm -f /Assessor-CLI/.scarp-init-complete; i=0; until [ -f /Assessor-CLI/.copy-complete ] || [ $i -ge 60 ]; do sleep 1; i=$((i+1)); done; [ -f /Assessor-CLI/.copy-complete ] || { echo \"timed out waiting for /Assessor-CLI/.copy-complete\" >&2; exit 1; }; scarp init /Assessor-CLI/benchmarks && scarp upgrade-assessor && touch /Assessor-CLI/.scarp-init-complete'"
     reason: complyadm polls for a sentinel file because systemd ordering does not wait. initContainers run in order, so the polling is gone.
+  - container: comply_graphql_init
+    kind: command
+    module: "sh -c 'i=0; until [ -f /Assessor-CLI/.scarp-init-complete ] || [ $i -ge 300 ]; do sleep 1; i=$((i+1)); done; [ -f /Assessor-CLI/.scarp-init-complete ] || { echo \"timed out waiting for /Assessor-CLI/.scarp-init-complete\" >&2; exit 1; }; exec ./hasura.sh'"
+    reason: The sentinel is on the benchmarks volume, an emptyDir inside the scarpy pod. A wait-for-scarpy initContainer polls scarpy's port for up to 300 seconds instead, and the image's own command runs hasura.sh.
+  - container: comply_graphql_init
+    kind: mount-omitted
+    name: "/Assessor-CLI"
+    module: "'benchmarks:/Assessor-CLI'"
+    reason: Only mounted to read the scarpy-init sentinel, which the wait-for-scarpy initContainer replaces.
   - container: comply_frontdoor
     kind: mount-omitted
     name: "/certs"

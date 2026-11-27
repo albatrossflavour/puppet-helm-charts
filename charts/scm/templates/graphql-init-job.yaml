@@ -2,8 +2,14 @@
 {{- $component := "graphql-init" -}}
 {{- /*
 comply_graphql_init: loads the Hasura metadata and recreates the event
-triggers. It needs Hasura up and the schema scarpy-init creates, which is what
-Helm waiting for every pod to be Ready gives it.
+triggers. It needs Hasura up and the schema scarpy-init creates.
+
+From complyadm 3.10.0 the module makes it wait for scarpy-init's sentinel file
+on the benchmarks volume. Here that volume is an emptyDir inside the scarpy
+pod, so the job waits for scarpy to accept connections instead. scarpy only
+starts once its scarpy-init initContainer has finished, and scarpy uses the
+Recreate strategy, so no older scarpy pod can answer in its place during an
+upgrade. That holds whether or not the release is installed with --wait.
 */ -}}
 apiVersion: batch/v1
 kind: Job
@@ -24,6 +30,29 @@ spec:
     spec:
       {{- include "scm.podCommon" . | nindent 6 }}
       restartPolicy: OnFailure
+      initContainers:
+        # The same 300 second budget as the module's sentinel wait.
+        - name: wait-for-scarpy
+          image: {{ include "scm.image" (dict "root" . "image" .Values.graphqlInitJob.image) | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: SCARPY_HOST
+              value: {{ printf "%s-scarpy" (include "scm.fullname" .) | quote }}
+          command:
+            - bash
+            - -c
+            - |
+              until timeout 2 bash -c "</dev/tcp/${SCARPY_HOST}/8088" 2>/dev/null; do
+                if [ "$SECONDS" -ge 300 ]; then
+                  echo "timed out waiting for ${SCARPY_HOST}:8088" >&2
+                  exit 1
+                fi
+                sleep 1
+              done
+          {{- with .Values.graphqlInitJob.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       containers:
         - name: graphql-init
           image: {{ include "scm.image" (dict "root" . "image" .Values.graphqlInitJob.image) | quote }}
